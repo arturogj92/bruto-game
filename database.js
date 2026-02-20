@@ -30,10 +30,14 @@ function init() {
       losses INTEGER DEFAULT 0,
       abilities TEXT DEFAULT '[]',
       weapon TEXT DEFAULT NULL,
+      weapon2 TEXT DEFAULT NULL,
+      weapon3 TEXT DEFAULT NULL,
+      weapon4 TEXT DEFAULT NULL,
       armor TEXT DEFAULT NULL,
       accessory TEXT DEFAULT NULL,
       inventory TEXT DEFAULT '[]',
       pending_choices TEXT DEFAULT NULL,
+      gold INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (player_id) REFERENCES players(id)
     );
@@ -71,6 +75,36 @@ function init() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (tournament_id) REFERENCES tournament(id)
     );
+
+    CREATE TABLE IF NOT EXISTS pve_fights (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      char_id INTEGER NOT NULL,
+      difficulty TEXT NOT NULL,
+      won INTEGER DEFAULT 0,
+      xp_gained INTEGER DEFAULT 0,
+      fight_date TEXT DEFAULT (date('now')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (char_id) REFERENCES characters(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS marketplace (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      item_type TEXT NOT NULL,
+      item_id TEXT NOT NULL,
+      price INTEGER NOT NULL,
+      listed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (seller_id) REFERENCES characters(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS discoveries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      player_id INTEGER NOT NULL,
+      combo_id TEXT NOT NULL,
+      discovered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (player_id) REFERENCES players(id),
+      UNIQUE(player_id, combo_id)
+    );
   `);
 
   // Seed fixed players with avatar assignments
@@ -102,11 +136,15 @@ function init() {
 
   // Migrate characters table if needed
   try { db.exec("ALTER TABLE characters ADD COLUMN weapon TEXT DEFAULT NULL"); } catch(e) {}
+  try { db.exec("ALTER TABLE characters ADD COLUMN weapon2 TEXT DEFAULT NULL"); } catch(e) {}
+  try { db.exec("ALTER TABLE characters ADD COLUMN weapon3 TEXT DEFAULT NULL"); } catch(e) {}
+  try { db.exec("ALTER TABLE characters ADD COLUMN weapon4 TEXT DEFAULT NULL"); } catch(e) {}
   try { db.exec("ALTER TABLE characters ADD COLUMN armor TEXT DEFAULT NULL"); } catch(e) {}
   try { db.exec("ALTER TABLE characters ADD COLUMN accessory TEXT DEFAULT NULL"); } catch(e) {}
   try { db.exec("ALTER TABLE characters ADD COLUMN inventory TEXT DEFAULT '[]'"); } catch(e) {}
   try { db.exec("ALTER TABLE characters ADD COLUMN pending_choices TEXT DEFAULT NULL"); } catch(e) {}
   try { db.exec("ALTER TABLE characters ADD COLUMN defense INTEGER DEFAULT 10"); } catch(e) {}
+  try { db.exec("ALTER TABLE characters ADD COLUMN gold INTEGER DEFAULT 0"); } catch(e) {}
 }
 
 // Player queries
@@ -125,8 +163,8 @@ const getAllCharacters = () => db.prepare(`
 
 const createCharacter = (playerId, name) => {
   return db.prepare(`
-    INSERT INTO characters (player_id, name, hp_max, hp_base, strength, defense, speed)
-    VALUES (?, ?, 120, 120, 10, 10, 10)
+    INSERT INTO characters (player_id, name, hp_max, hp_base, strength, defense, speed, gold)
+    VALUES (?, ?, 120, 120, 10, 10, 10, 0)
   `).run(playerId, name);
 };
 
@@ -199,11 +237,80 @@ const updateTournamentMatch = (id, data) => {
 
 const resetDB = () => {
   db.exec(`
+    DELETE FROM marketplace;
     DELETE FROM tournament_matches;
     DELETE FROM tournament;
     DELETE FROM fight_log;
+    DELETE FROM discoveries;
     DELETE FROM characters;
   `);
+};
+
+// PvE queries
+const getPveFightsHour = (charId) => {
+  return db.prepare("SELECT COUNT(*) as count FROM pve_fights WHERE char_id = ? AND created_at >= datetime('now', '-1 hour')").get(charId);
+};
+
+const addPveFight = (data) => {
+  return db.prepare(
+    "INSERT INTO pve_fights (char_id, difficulty, won, xp_gained) VALUES (?, ?, ?, ?)"
+  ).run(data.char_id, data.difficulty, data.won ? 1 : 0, data.xp_gained);
+};
+
+const getMinLevel = () => {
+  return db.prepare("SELECT MIN(level) as min_level FROM characters").get();
+};
+
+const getMaxLevel = () => {
+  return db.prepare("SELECT MAX(level) as max_level FROM characters").get();
+};
+
+// Discovery queries
+const getDiscoveries = (playerId) => {
+  return db.prepare('SELECT * FROM discoveries WHERE player_id = ?').all(playerId);
+};
+
+const addDiscovery = (playerId, comboId) => {
+  try {
+    return db.prepare('INSERT INTO discoveries (player_id, combo_id) VALUES (?, ?)').run(playerId, comboId);
+  } catch(e) {
+    // UNIQUE constraint - already discovered
+    return null;
+  }
+};
+
+const hasDiscovery = (playerId, comboId) => {
+  return !!db.prepare('SELECT 1 FROM discoveries WHERE player_id = ? AND combo_id = ?').get(playerId, comboId);
+};
+
+
+// ============ MARKETPLACE QUERIES ============
+const getMarketplaceListings = () => {
+  return db.prepare(`
+    SELECT m.*, c.name as seller_name, p.display_name as seller_player_name, p.slug as seller_slug
+    FROM marketplace m
+    JOIN characters c ON m.seller_id = c.id
+    JOIN players p ON c.player_id = p.id
+    ORDER BY m.listed_at DESC
+  `).all();
+};
+
+const getMarketplaceListing = (id) => {
+  return db.prepare('SELECT * FROM marketplace WHERE id = ?').get(id);
+};
+
+const addMarketplaceListing = (sellerId, itemType, itemId, price) => {
+  return db.prepare(
+    'INSERT INTO marketplace (seller_id, item_type, item_id, price) VALUES (?, ?, ?, ?)'
+  ).run(sellerId, itemType, itemId, price);
+};
+
+const removeMarketplaceListing = (id) => {
+  return db.prepare('DELETE FROM marketplace WHERE id = ?').run(id);
+};
+
+const getMyListings = (sellerId) => {
+  return db.prepare('SELECT * FROM marketplace WHERE seller_id = ?').all(sellerId);
 };
 
 module.exports = {
@@ -214,5 +321,9 @@ module.exports = {
   addFightLog, getFightHistory,
   getActiveTournament, createTournament, updateTournament,
   getTournamentMatches, createTournamentMatch, updateTournamentMatch,
-  resetDB
+  resetDB,
+  getPveFightsHour, addPveFight, getMinLevel, getMaxLevel,
+  getDiscoveries, addDiscovery, hasDiscovery,
+  getMarketplaceListings, getMarketplaceListing, addMarketplaceListing,
+  removeMarketplaceListing, getMyListings
 };

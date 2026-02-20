@@ -11,6 +11,58 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 db.init();
 
+// ============ GOLD HELPERS ============
+function calcPvPGold(winnerLevel) {
+  const base = winnerLevel * 8;
+  const bonus = Math.floor(Math.random() * 11) + 5;
+  return base + bonus;
+}
+
+function calcPvEGold(difficulty, isWin) {
+  if (!isWin) return 0;
+  const ranges = { campesino: [5, 10], bandido: [10, 20], gladiador: [20, 35], bestia: [35, 60] };
+  const [min, max] = ranges[difficulty] || [5, 10];
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function getShopSeed() {
+  const now = new Date();
+  const period = Math.floor(now.getUTCHours() / 6);
+  return now.toISOString().slice(0, 10) + '-' + period;
+}
+
+function seededRandom(seed) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) { h = ((h << 5) - h) + seed.charCodeAt(i); h |= 0; }
+  return function() {
+    h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
+    h = Math.imul(h ^ (h >>> 13), 0x45d9f3b);
+    h = (h ^ (h >>> 16)) >>> 0;
+    return h / 4294967296;
+  };
+}
+
+function getShopItems() {
+  const seed = getShopSeed();
+  const rng = seededRandom(seed);
+  const pool = [];
+  for (const [id, w] of Object.entries(combat.WEAPONS)) {
+    const power = (w.damage || 0) + Math.abs(w.speed || 0);
+    pool.push({ type: 'weapon', id, name: w.name, emoji: w.emoji, desc: w.desc, price: Math.max(50, Math.min(500, Math.floor(power * 40 + 30))) });
+  }
+  for (const [id, a] of Object.entries(combat.ARMORS)) {
+    const power = (a.defense || 0) + Math.abs(a.speed || 0) + (a.hp || 0) / 5;
+    pool.push({ type: 'armor', id, name: a.name, emoji: a.emoji, desc: a.desc, price: Math.max(50, Math.min(500, Math.floor(power * 35 + 40))) });
+  }
+  for (const [id, ac] of Object.entries(combat.ACCESSORIES)) {
+    const power = (ac.strength || 0) + (ac.defense || 0) + (ac.speed || 0) + (ac.hp || 0) / 5;
+    pool.push({ type: 'accessory', id, name: ac.name, emoji: ac.emoji, desc: ac.desc, price: Math.max(50, Math.min(500, Math.floor(power * 40 + 50))) });
+  }
+  const shuffled = [...pool].sort(() => rng() - 0.5);
+  return shuffled.slice(0, 3 + Math.floor(rng() * 3));
+}
+
+
 // ============ API ROUTES ============
 
 // Get all players
@@ -64,40 +116,43 @@ app.post('/api/fight/matchmaking', (req, res) => {
   const char = db.getCharacterById(charId);
   if (!char) return res.status(404).json({ error: 'Character not found' });
 
-  // Find opponents ±2 levels, then closest
   const allChars = db.getAllCharacters();
   const opponents = allChars.filter(c => c.id !== char.id);
   if (opponents.length === 0) {
     return res.status(400).json({ error: 'No hay oponentes disponibles' });
   }
 
-  // Sort by level proximity
   opponents.sort((a, b) => Math.abs(a.level - char.level) - Math.abs(b.level - char.level));
-  
-  // Prefer within ±2 levels, otherwise closest
   let pool = opponents.filter(o => Math.abs(o.level - char.level) <= 2);
-  if (pool.length === 0) pool = [opponents[0]]; // closest level
-  
-  // Random from pool
+  if (pool.length === 0) pool = [opponents[0]];
   const opponent = pool[Math.floor(Math.random() * pool.length)];
 
-  // Run combat
   const result = combat.simulateCombat(char, opponent);
 
-  // XP calculation
-  const baseWinXP = 30 + opponent.level * 5;
-  const baseLoseXP = 8 + opponent.level * 2;
+  // Dynamic XP based on level difference
   const levelDiff = opponent.level - char.level;
-  const winnerXP = Math.floor(baseWinXP * (1 + Math.max(0, levelDiff) * 0.1));
-  const loserXP = Math.floor(baseLoseXP);
+  const baseWinXP = 50 + Math.max(char.level, opponent.level) * 8; // PvP gives MORE than PvE
+  const baseLoseXP = 15 + Math.max(char.level, opponent.level) * 3; // Losing PvP still decent
+  // Beat someone higher = more XP, beat someone lower = less XP
+  let winMultiplier = 1.0;
+  if (levelDiff > 0) winMultiplier = 1 + levelDiff * 0.2; // +20% per level above you
+  else if (levelDiff < 0) winMultiplier = Math.max(0.2, 1 + levelDiff * 0.25); // -25% per level below you, min 20%
+  const winnerXP = Math.floor(baseWinXP * winMultiplier);
+  const loserXP = Math.floor(baseLoseXP * Math.max(0.5, 1 + levelDiff * 0.1));
 
   const winnerId = result.winner_id;
   const isWin = winnerId === char.id;
   const myXP = isWin ? winnerXP : loserXP;
 
-  // Update my character
+  // Gold
+  const winnerGold = calcPvPGold(Math.max(char.level, opponent.level));
+  const loserGold = Math.floor(winnerGold * 0.3);
+  const myGold = isWin ? winnerGold : loserGold;
+  const oppGold = isWin ? loserGold : winnerGold;
+
   const myUpdates = {
     xp: char.xp + myXP,
+    gold: (char.gold || 0) + myGold,
     wins: isWin ? char.wins + 1 : char.wins,
     losses: isWin ? char.losses : char.losses + 1
   };
@@ -113,7 +168,6 @@ app.post('/api/fight/matchmaking', (req, res) => {
 
   db.updateCharacter(char.id, myUpdates);
 
-  // Update opponent
   const oppXP = isWin ? loserXP : winnerXP;
   const oppUpdates = {
     xp: opponent.xp + oppXP,
@@ -127,7 +181,6 @@ app.post('/api/fight/matchmaking', (req, res) => {
   }
   db.updateCharacter(opponent.id, oppUpdates);
 
-  // Log fight
   db.addFightLog({
     char1_id: char.id, char2_id: opponent.id,
     winner_id: winnerId, xp_winner: winnerXP, xp_loser: loserXP,
@@ -136,14 +189,13 @@ app.post('/api/fight/matchmaking', (req, res) => {
 
   const updatedChar = db.getCharacterById(char.id);
   const updatedOpp = db.getCharacterById(opponent.id);
-
-  // Get player info for opponent
   const oppPlayer = db.getPlayerById(opponent.player_id);
 
   res.json({
     result: isWin ? 'win' : 'lose',
     log: result.log,
     xpGained: myXP,
+    goldGained: myGold,
     leveledUp,
     pendingChoices: leveledUp && updatedChar.pending_choices ? JSON.parse(updatedChar.pending_choices) : null,
     character: updatedChar,
@@ -160,16 +212,29 @@ app.post('/api/fight/pvp', (req, res) => {
   if (char1.id === char2.id) return res.status(400).json({ error: 'No puedes pelear contigo mismo' });
 
   const result = combat.simulateCombat(char1, char2);
-  const winnerXP = Math.floor(30 + char2.level * 5);
-  const loserXP = Math.floor(8 + char2.level * 2);
+  // Determine winner first
   const winnerId = result.winner_id;
   const loserId = result.loser_id;
+
+  // Dynamic XP: beating lower levels gives less, higher gives more
+  const pvpLevelDiff1 = char2.level - char1.level; // from char1 perspective
+  const pvpBaseWin = 50 + Math.max(char1.level, char2.level) * 8; // PvP premium XP
+  const pvpBaseLose = 15 + Math.max(char1.level, char2.level) * 3;
+  let pvpWinMult = 1.0;
+  const winnerLevelDiff = (winnerId === char1.id) ? pvpLevelDiff1 : -pvpLevelDiff1;
+  if (winnerLevelDiff > 0) pvpWinMult = 1 + winnerLevelDiff * 0.2;
+  else if (winnerLevelDiff < 0) pvpWinMult = Math.max(0.15, 1 + winnerLevelDiff * 0.3);
+  const winnerXP = Math.floor(pvpBaseWin * pvpWinMult);
+  const loserXP = Math.floor(pvpBaseLose * Math.max(0.5, 1 - Math.abs(winnerLevelDiff) * 0.1));
 
   const winner = winnerId === char1.id ? char1 : char2;
   const loser = loserId === char1.id ? char1 : char2;
 
-  // Update winner
-  const winnerUpdates = { xp: winner.xp + winnerXP, wins: winner.wins + 1 };
+  // Gold
+  const winnerGold = calcPvPGold(Math.max(char1.level, char2.level));
+  const loserGold = Math.floor(winnerGold * 0.3);
+
+  const winnerUpdates = { xp: winner.xp + winnerXP, wins: winner.wins + 1, gold: (winner.gold || 0) + winnerGold };
   let winnerLeveledUp = false;
   if (winnerUpdates.xp >= winner.xp_next && winner.level < 50) {
     const lvlData = combat.levelUp(winner);
@@ -179,8 +244,7 @@ app.post('/api/fight/pvp', (req, res) => {
   }
   db.updateCharacter(winner.id, winnerUpdates);
 
-  // Update loser
-  const loserUpdates = { xp: loser.xp + loserXP, losses: loser.losses + 1 };
+  const loserUpdates = { xp: loser.xp + loserXP, losses: loser.losses + 1, gold: (loser.gold || 0) + loserGold };
   if (loserUpdates.xp >= loser.xp_next && loser.level < 50) {
     const lvlData = combat.levelUp(loser);
     Object.assign(loserUpdates, lvlData.changes);
@@ -199,6 +263,7 @@ app.post('/api/fight/pvp', (req, res) => {
     winnerXP, loserXP,
     result: isMyWin ? 'win' : 'lose',
     xpGained: isMyWin ? winnerXP : loserXP,
+    goldGained: isMyWin ? winnerGold : loserGold,
     leveledUp: isMyWin ? winnerLeveledUp : false,
     pendingChoices: updatedChar.pending_choices ? JSON.parse(updatedChar.pending_choices) : null,
     character: updatedChar,
@@ -229,38 +294,81 @@ app.post('/api/character/:id/choose', (req, res) => {
   db.updateCharacter(char.id, updates);
   const updated = db.getCharacterById(char.id);
 
-  res.json({ success: true, chosen, character: updated });
+  // Check for new combos after equipping a new weapon
+  let newCombos = [];
+  if (chosen.type === 'weapon') {
+    newCombos = checkAndDiscoverCombos(updated);
+  }
+
+  res.json({ success: true, chosen, character: updated, newCombos });
 });
 
-// Equip item
+// Equip item - supports weapon, weapon2, weapon3, weapon4, armor, accessory
 app.post('/api/character/:id/equip', (req, res) => {
   const char = db.getCharacterById(parseInt(req.params.id));
   if (!char) return res.status(404).json({ error: 'Character not found' });
 
   const { slot, itemId } = req.body;
-  if (!['weapon', 'armor', 'accessory'].includes(slot)) {
+  const validSlots = ['weapon', 'weapon2', 'weapon3', 'weapon4', 'armor', 'accessory'];
+  if (!validSlots.includes(slot)) {
     return res.status(400).json({ error: 'Slot inválido' });
   }
 
+  // Determine item type from slot
+  const slotType = slot.startsWith('weapon') ? 'weapon' : slot;
+  
   const inventory = JSON.parse(char.inventory || '[]');
-  const hasItem = inventory.some(i => i.type === slot && i.id === itemId);
+  const hasItem = inventory.some(i => i.type === slotType && i.id === itemId);
   if (!hasItem && itemId !== null) {
     return res.status(400).json({ error: 'No tienes ese item' });
   }
 
   db.updateCharacter(char.id, { [slot]: itemId });
-  res.json({ success: true, character: db.getCharacterById(char.id) });
+  const updated = db.getCharacterById(char.id);
+
+  // Check for new combos
+  const newCombos = checkAndDiscoverCombos(updated);
+
+  res.json({ success: true, character: updated, newCombos });
 });
 
-// Get ability/item definitions
+// Get ability/item/combo definitions
 app.get('/api/definitions', (req, res) => {
   res.json({
     abilities: combat.ABILITIES,
     weapons: combat.WEAPONS,
     armors: combat.ARMORS,
-    accessories: combat.ACCESSORIES
+    accessories: combat.ACCESSORIES,
+    combos: combat.WEAPON_COMBOS
   });
 });
+
+// Get player discoveries
+app.get('/api/discoveries/:playerId', (req, res) => {
+  const discoveries = db.getDiscoveries(parseInt(req.params.playerId));
+  res.json(discoveries);
+});
+
+// Get active combos for a character
+app.get('/api/character/:id/combos', (req, res) => {
+  const char = db.getCharacterById(parseInt(req.params.id));
+  if (!char) return res.status(404).json({ error: 'Character not found' });
+  const activeCombos = combat.getActiveCombos(char);
+  res.json(activeCombos);
+});
+
+// Helper: check and discover new combos
+function checkAndDiscoverCombos(character) {
+  const activeCombos = combat.getActiveCombos(character);
+  const newCombos = [];
+  for (const combo of activeCombos) {
+    if (!db.hasDiscovery(character.player_id, combo.id)) {
+      db.addDiscovery(character.player_id, combo.id);
+      newCombos.push(combo);
+    }
+  }
+  return newCombos;
+}
 
 // Fight history
 app.get('/api/fights/:charId', (req, res) => {
@@ -304,7 +412,6 @@ app.post('/api/tournament/start', (req, res) => {
     db.createTournamentMatch({ tournament_id: tournamentId, round: 0, match_index: Math.floor(i / 2), char1_id: bracket[i], char2_id: bracket[i + 1] });
   }
 
-  // Auto-resolve byes
   const matches = db.getTournamentMatches(tournamentId);
   for (const match of matches) {
     if (match.char1_id && !match.char2_id) db.updateTournamentMatch(match.id, { winner_id: match.char1_id, played: 1 });
@@ -381,11 +488,269 @@ app.post('/api/admin/reset', (req, res) => {
   res.json({ success: true, message: 'Todo reseteado' });
 });
 
+// ============ PVE ARENA ============
+const NPC_TEMPLATES = {
+  campesino: { name: 'Campesino', emoji: '\u{1F9D1}\u200D\u{1F33E}', statMult: 0.60, xpMult: 15, danger: 'Fácil' },
+  bandido:   { name: 'Bandido',   emoji: '\u{1F5E1}\uFE0F', statMult: 0.80, xpMult: 25, danger: 'Medio' },
+  gladiador: { name: 'Gladiador', emoji: '\u2694\uFE0F', statMult: 1.00, xpMult: 40, danger: 'Difícil' },
+  bestia:    { name: 'Bestia',    emoji: '\u{1F432}', statMult: 1.20, xpMult: 60, danger: 'Muy Difícil' }
+};
+
+function generateNPC(character, difficulty) {
+  const template = NPC_TEMPLATES[difficulty];
+  if (!template) return null;
+  const mult = template.statMult;
+  const effectiveStats = combat.getEffectiveStats(character);
+  
+  const npcNames = {
+    campesino: ['Aldeano Furioso', 'Granjero Loco', 'Pastor Vengativo', 'Herrero Novato', 'Leñador Torpe'],
+    bandido: ['Bandido Errante', 'Ladrón de Caminos', 'Saqueador', 'Mercenario Barato', 'Rufián'],
+    gladiador: ['Gladiador de Arena', 'Campeón Esclavo', 'Luchador Veterano', 'Guerrero de Foso', 'Centurión'],
+    bestia: ['Bestia Infernal', 'Dragón Joven', 'Hidra Furiosa', 'Gólem de Piedra', 'Quimera Oscura']
+  };
+  const names = npcNames[difficulty] || ['Enemigo'];
+  const name = names[Math.floor(Math.random() * names.length)];
+  
+  const possibleAbilities = Object.keys(combat.ABILITIES);
+  const numAbilities = difficulty === 'campesino' ? 0 : difficulty === 'bandido' ? 1 : difficulty === 'gladiador' ? 2 : 3;
+  const shuffled = [...possibleAbilities].sort(() => Math.random() - 0.5);
+  const npcAbilities = shuffled.slice(0, numAbilities);
+
+  return {
+    id: -1,
+    name: template.emoji + ' ' + name,
+    level: character.level,
+    hp_max: Math.max(50, Math.floor(effectiveStats.hp_max * mult)),
+    strength: Math.max(5, Math.floor(effectiveStats.strength * mult)),
+    defense: Math.max(3, Math.floor(effectiveStats.defense * mult)),
+    speed: Math.max(3, Math.floor(effectiveStats.speed * mult)),
+    abilities: JSON.stringify(npcAbilities),
+    weapon: null, weapon2: null, weapon3: null, weapon4: null,
+    armor: null, accessory: null,
+    inventory: '[]'
+  };
+}
+
+app.get('/api/pve/info/:charId', (req, res) => {
+  const charId = parseInt(req.params.charId);
+  const char = db.getCharacterById(charId);
+  if (!char) return res.status(404).json({ error: 'Character not found' });
+
+  const todayFights = db.getPveFightsHour(charId);
+  const minLevelData = db.getMinLevel();
+  const maxLevelData = db.getMaxLevel();
+  const minLevel = minLevelData ? minLevelData.min_level : char.level;
+  const maxLevel = maxLevelData ? maxLevelData.max_level : char.level;
+
+  let catchUpBonus = 0;
+  let catchUpReason = '';
+  if (char.level === minLevel && maxLevel > minLevel) {
+    catchUpBonus = 0.50;
+    catchUpReason = '¡Menor nivel del server! +50% XP';
+  } else if (maxLevel - char.level >= 2) {
+    catchUpBonus = 0.30;
+    catchUpReason = '2+ niveles por debajo del líder: +30% XP';
+  }
+
+  const difficulties = Object.entries(NPC_TEMPLATES).map(([key, t]) => {
+    const baseXP = char.level * t.xpMult;
+    const bonusXP = Math.floor(baseXP * catchUpBonus);
+    return {
+      id: key,
+      name: t.name,
+      emoji: t.emoji,
+      danger: t.danger,
+      statPercent: Math.floor(t.statMult * 100),
+      baseXP: Math.floor(baseXP),
+      bonusXP,
+      totalXP: Math.floor(baseXP + bonusXP),
+      goldRange: ({campesino:'5-10',bandido:'10-20',gladiador:'20-35',bestia:'35-60'})[key] || '5-10'
+    };
+  });
+
+  res.json({
+    fightsToday: todayFights.count,
+    maxFights: 20,
+    catchUpBonus,
+    catchUpReason,
+    difficulties
+  });
+});
+
+app.post('/api/fight/pve', (req, res) => {
+  const { characterId, difficulty } = req.body;
+  if (!characterId || !difficulty) return res.status(400).json({ error: 'characterId y difficulty requeridos' });
+  if (!NPC_TEMPLATES[difficulty]) return res.status(400).json({ error: 'Dificultad inválida' });
+
+  const char = db.getCharacterById(characterId);
+  if (!char) return res.status(404).json({ error: 'Character not found' });
+
+  const todayFights = db.getPveFightsHour(characterId);
+  if (todayFights.count >= 20) {
+    return res.status(429).json({ error: 'Límite diario de 20 peleas PvE alcanzado', fightsToday: todayFights.count });
+  }
+
+  const npc = generateNPC(char, difficulty);
+  if (!npc) return res.status(400).json({ error: 'Error generando NPC' });
+
+  const result = combat.simulateCombat(char, npc);
+  const isWin = result.winner_id === char.id;
+
+  const template = NPC_TEMPLATES[difficulty];
+  let xpGained = 0;
+  if (isWin) {
+    xpGained = Math.floor(char.level * template.xpMult);
+    
+    const minLevelData = db.getMinLevel();
+    const maxLevelData = db.getMaxLevel();
+    const minLevel = minLevelData ? minLevelData.min_level : char.level;
+    const maxLevel = maxLevelData ? maxLevelData.max_level : char.level;
+    
+    let catchUpBonus = 0;
+    if (char.level === minLevel && maxLevel > minLevel) {
+      catchUpBonus = 0.50;
+    } else if (maxLevel - char.level >= 2) {
+      catchUpBonus = 0.30;
+    }
+    xpGained = Math.floor(xpGained * (1 + catchUpBonus));
+  }
+
+  // Gold from PvE
+  const goldGained = calcPvEGold(difficulty, isWin);
+
+  const updates = { xp: char.xp + xpGained, gold: (char.gold || 0) + goldGained };
+  let leveledUp = false;
+  let levelUpData = null;
+  if (updates.xp >= char.xp_next && char.level < 50 && xpGained > 0) {
+    levelUpData = combat.levelUp(char);
+    Object.assign(updates, levelUpData.changes);
+    updates.xp = updates.xp - char.xp_next;
+    leveledUp = true;
+  }
+  db.updateCharacter(char.id, updates);
+
+  db.addPveFight({ char_id: char.id, difficulty, won: isWin, xp_gained: xpGained });
+
+  db.addFightLog({
+    char1_id: char.id, char2_id: null,
+    winner_id: isWin ? char.id : -1,
+    xp_winner: xpGained, xp_loser: 0,
+    log: result.log
+  });
+
+  const updatedChar = db.getCharacterById(char.id);
+  const updatedFights = db.getPveFightsHour(char.id);
+
+  res.json({
+    result: isWin ? 'win' : 'lose',
+    log: result.log,
+    xpGained,
+    goldGained,
+    leveledUp,
+    pendingChoices: leveledUp && updatedChar.pending_choices ? JSON.parse(updatedChar.pending_choices) : null,
+    character: updatedChar,
+    npc: { name: npc.name, level: npc.level, difficulty },
+    fightsToday: updatedFights.count,
+    maxFights: 20
+  });
+});
+
+
+// Get all weapon combos
+app.get("/api/combos", (req, res) => {
+  const combos = Object.entries(combat.WEAPON_COMBOS).map(([id, c]) => ({
+    id, name: c.name, emoji: c.emoji, desc: c.desc,
+    weapons: c.weapons, weaponCount: c.weapons.length
+  }));
+  res.json(combos);
+});
+
+// ============ SHOP (MERCADER NPC) ============
+app.get('/api/shop', (req, res) => {
+  const items = getShopItems();
+  const nextRotation = new Date();
+  const h = nextRotation.getUTCHours();
+  nextRotation.setUTCHours((Math.floor(h / 6) + 1) * 6, 0, 0, 0);
+  res.json({ items, nextRotation: nextRotation.toISOString(), seed: getShopSeed() });
+});
+
+app.post('/api/shop/buy', (req, res) => {
+  const { charId, itemType, itemId, price } = req.body;
+  const char = db.getCharacterById(charId);
+  if (!char) return res.status(404).json({ error: 'Character not found' });
+  const shopItems = getShopItems();
+  const shopItem = shopItems.find(si => si.type === itemType && si.id === itemId && si.price === price);
+  if (!shopItem) return res.status(400).json({ error: 'Item no disponible en la tienda' });
+  if ((char.gold || 0) < price) return res.status(400).json({ error: 'No tienes suficiente oro' });
+  const inventory = JSON.parse(char.inventory || '[]');
+  inventory.push({ type: itemType, id: itemId });
+  db.updateCharacter(char.id, { inventory: JSON.stringify(inventory), gold: (char.gold || 0) - price });
+  res.json({ success: true, character: db.getCharacterById(char.id) });
+});
+
+// ============ MARKETPLACE (P2P) ============
+app.get('/api/marketplace', (req, res) => {
+  res.json(db.getMarketplaceListings());
+});
+
+app.get('/api/marketplace/mine/:charId', (req, res) => {
+  res.json(db.getMyListings(parseInt(req.params.charId)));
+});
+
+app.post('/api/marketplace/list', (req, res) => {
+  const { charId, itemType, itemId, price } = req.body;
+  const char = db.getCharacterById(charId);
+  if (!char) return res.status(404).json({ error: 'Character not found' });
+  if (!price || price < 10 || price > 9999) return res.status(400).json({ error: 'Precio: 10-9999 oro' });
+  const inventory = JSON.parse(char.inventory || '[]');
+  const idx = inventory.findIndex(i => i.type === itemType && i.id === itemId);
+  if (idx === -1) return res.status(400).json({ error: 'No tienes ese item' });
+  if (itemType === 'weapon' && [char.weapon, char.weapon2, char.weapon3, char.weapon4].includes(itemId))
+    return res.status(400).json({ error: 'Desequipa el item primero' });
+  if (itemType === 'armor' && char.armor === itemId) return res.status(400).json({ error: 'Desequipa la armadura primero' });
+  if (itemType === 'accessory' && char.accessory === itemId) return res.status(400).json({ error: 'Desequipa el accesorio primero' });
+  inventory.splice(idx, 1);
+  db.updateCharacter(char.id, { inventory: JSON.stringify(inventory) });
+  db.addMarketplaceListing(char.id, itemType, itemId, price);
+  res.json({ success: true, character: db.getCharacterById(char.id) });
+});
+
+app.post('/api/marketplace/buy', (req, res) => {
+  const { charId, listingId } = req.body;
+  const char = db.getCharacterById(charId);
+  if (!char) return res.status(404).json({ error: 'Character not found' });
+  const listing = db.getMarketplaceListing(listingId);
+  if (!listing) return res.status(404).json({ error: 'Listing no encontrado' });
+  if (listing.seller_id === char.id) return res.status(400).json({ error: 'No puedes comprar tus propios items' });
+  if ((char.gold || 0) < listing.price) return res.status(400).json({ error: 'No tienes suficiente oro' });
+  const seller = db.getCharacterById(listing.seller_id);
+  if (!seller) return res.status(400).json({ error: 'Vendedor no encontrado' });
+  const buyerInv = JSON.parse(char.inventory || '[]');
+  buyerInv.push({ type: listing.item_type, id: listing.item_id });
+  db.updateCharacter(char.id, { inventory: JSON.stringify(buyerInv), gold: (char.gold || 0) - listing.price });
+  db.updateCharacter(seller.id, { gold: (seller.gold || 0) + listing.price });
+  db.removeMarketplaceListing(listing.id);
+  res.json({ success: true, character: db.getCharacterById(char.id) });
+});
+
+app.post('/api/marketplace/cancel', (req, res) => {
+  const { charId, listingId } = req.body;
+  const char = db.getCharacterById(charId);
+  if (!char) return res.status(404).json({ error: 'Character not found' });
+  const listing = db.getMarketplaceListing(listingId);
+  if (!listing) return res.status(404).json({ error: 'Listing no encontrado' });
+  if (listing.seller_id !== char.id) return res.status(403).json({ error: 'No es tu listing' });
+  const inventory = JSON.parse(char.inventory || '[]');
+  inventory.push({ type: listing.item_type, id: listing.item_id });
+  db.updateCharacter(char.id, { inventory: JSON.stringify(inventory) });
+  db.removeMarketplaceListing(listing.id);
+  res.json({ success: true, character: db.getCharacterById(char.id) });
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`⚔️  BRUTO GAME v2 running on port ${PORT}`);
-  console.log(`🏰 http://localhost:${PORT}`);
+  console.log('BRUTO GAME v3.0 (Weapon Combos) running on port ' + PORT);
 });

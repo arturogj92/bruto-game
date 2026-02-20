@@ -1,5 +1,5 @@
 /**
- * Combat Engine v2 - PvP Only with Weapons, Abilities, Items
+ * Combat Engine v3 - PvP + PvE with Weapon Combos
  */
 
 // ============ WEAPONS ============
@@ -32,6 +32,123 @@ const ACCESSORIES = {
   botas_velocidad: { name: 'Botas de Velocidad', emoji: '👢', speed: 5, desc: '+5 Velocidad' },
   capa_defensa: { name: 'Capa Protectora', emoji: '🧣', defense: 4, desc: '+4 Defensa' },
   corona_poder: { name: 'Corona de Poder', emoji: '👑', strength: 3, hp: 15, desc: '+3 Fuerza, +15 HP' },
+};
+
+// ============ WEAPON COMBOS ============
+const WEAPON_COMBOS = {
+  estilo_dual: {
+    id: 'estilo_dual', name: 'Estilo Dual', emoji: '⚔️🗡️',
+    description: 'La espada y la daga se complementan en un baile mortal',
+    weapons: ['espada', 'daga'],
+    bonus: { type: 'stat', speedPercent: 0.15 },
+    bonusDesc: '+15% velocidad de ataque'
+  },
+  fuerza_bruta: {
+    id: 'fuerza_bruta', name: 'Fuerza Bruta', emoji: '🪓⚒️',
+    description: 'Dos armas pesadas para aplastar a cualquier enemigo',
+    weapons: ['hacha', 'martillo'],
+    bonus: { type: 'stat', strengthPercent: 0.25, speedPercent: -0.10 },
+    bonusDesc: '+25% daño, -10% velocidad'
+  },
+  cazador_letal: {
+    id: 'cazador_letal', name: 'Cazador Letal', emoji: '🏹☠️',
+    description: 'Flechas envenenadas que debilitan al enemigo',
+    weapons: ['arco', 'daga'],
+    bonus: { type: 'effect', effect: 'poison_combo', poisonDamage: 4, poisonDuration: 3 },
+    bonusDesc: 'Ataques envenenan 3 turnos'
+  },
+  falange: {
+    id: 'falange', name: 'Falange', emoji: '🔱🧣',
+    description: 'La lanza tras el escudo, formación defensiva perfecta',
+    weapons: ['lanza'],
+    requireAccessory: 'capa_defensa',
+    bonus: { type: 'stat', defensePercent: 0.30 },
+    bonusDesc: '+30% defensa'
+  },
+  lluvia_proyectiles: {
+    id: 'lluvia_proyectiles', name: 'Lluvia de Proyectiles', emoji: '🔱🏹',
+    description: 'Un aluvión de ataques a distancia',
+    weapons: ['tridente', 'arco'],
+    bonus: { type: 'effect', effect: 'triple_attack', chance: 0.15 },
+    bonusDesc: '15% de atacar 3 veces'
+  },
+  maestro_espadas: {
+    id: 'maestro_espadas', name: 'Maestro de Espadas', emoji: '⚔️⚔️',
+    description: 'Dos espadas en manos de un maestro, golpes certeros',
+    weapons: ['espada', 'espada'],
+    bonus: { type: 'stat', critPercent: 0.20 },
+    bonusDesc: '+20% golpe crítico'
+  },
+  aplastamiento: {
+    id: 'aplastamiento', name: 'Aplastamiento', emoji: '⚒️🔨',
+    description: 'Golpes demoledores que dejan aturdido al rival',
+    weapons: ['martillo', 'maza'],
+    bonus: { type: 'effect', effect: 'stun_combo', chance: 0.20 },
+    bonusDesc: '20% de aturdir 1 turno'
+  },
+  asesino: {
+    id: 'asesino', name: 'Asesino', emoji: '🗡️🗡️',
+    description: 'El primer golpe es devastador, silencioso y mortal',
+    weapons: ['daga', 'daga'],
+    bonus: { type: 'effect', effect: 'first_strike', multiplier: 2.5 },
+    bonusDesc: 'Primer ataque hace x2.5 daño'
+  },
+  arsenal_completo: {
+    id: 'arsenal_completo', name: 'Arsenal Completo', emoji: '🏆',
+    description: 'Cuatro armas distintas equipadas, dominio total del combate',
+    weapons: ['__any_4_distinct__'],
+    bonus: { type: 'stat', strengthPercent: 0.10, defensePercent: 0.10, speedPercent: 0.10, hpPercent: 0.10 },
+    bonusDesc: '+10% a todos los stats'
+  },
+  alcance_supremo: {
+    id: 'alcance_supremo', name: 'Alcance Supremo', emoji: '🏹🔱',
+    description: 'Ataque desde lejos, siempre el primero en golpear',
+    weapons: ['arco', 'lanza'],
+    bonus: { type: 'effect', effect: 'always_first' },
+    bonusDesc: 'Ataca primero siempre'
+  },
+  sombra_mortal: {
+    id: 'sombra_mortal', name: 'Sombra Mortal', emoji: '🗡️⚔️',
+    description: 'La katana y la daga juntas, ataques desde las sombras',
+    weapons: ['katana', 'daga'],
+    bonus: { type: 'stat', speedPercent: 0.10, critPercent: 0.15 },
+    bonusDesc: '+10% velocidad, +15% crítico'
+  },
+  segador: {
+    id: 'segador', name: 'El Segador', emoji: '⚰️🔨',
+    description: 'La guadaña y la maza, cosechando almas',
+    weapons: ['guadana', 'maza'],
+    bonus: { type: 'effect', effect: 'lifesteal_combo', lifeStealPercent: 0.15 },
+    bonusDesc: 'Roba 15% del daño como vida'
+  },
+  berserker: {
+    id: 'berserker', name: 'Berserker', emoji: '🪓⚔️',
+    description: 'Hacha y espada, furia descontrolada',
+    weapons: ['hacha', 'espada'],
+    bonus: { type: 'stat', strengthPercent: 0.20, defensePercent: -0.15 },
+    bonusDesc: '+20% daño, -15% defensa'
+  },
+  guardian: {
+    id: 'guardian', name: 'Guardián Ancestral', emoji: '🔱⚒️',
+    description: 'El tridente y el martillo protegen como los antiguos',
+    weapons: ['tridente', 'martillo'],
+    bonus: { type: 'stat', defensePercent: 0.15, hpPercent: 0.15 },
+    bonusDesc: '+15% defensa, +15% HP'
+  },
+  viento_cortante: {
+    id: 'viento_cortante', name: 'Viento Cortante', emoji: '⚔️🏹',
+    description: 'Katana y arco, velocidad del viento',
+    weapons: ['katana', 'arco'],
+    bonus: { type: 'stat', speedPercent: 0.25 },
+    bonusDesc: '+25% velocidad'
+  },
+  ejecutor: {
+    id: 'ejecutor', name: 'El Ejecutor', emoji: '⚰️🪓',
+    description: 'Guadaña y hacha, sentencia de muerte',
+    weapons: ['guadana', 'hacha'],
+    bonus: { type: 'effect', effect: 'execute', threshold: 0.20, bonusDamage: 0.50 },
+    bonusDesc: 'Si enemigo <20% HP, +50% daño'
+  }
 };
 
 // ============ ABILITIES ============
@@ -98,7 +215,7 @@ const ABILITIES = {
   },
 };
 
-// ============ STAT BOOSTS (for level up choices) ============
+// ============ STAT BOOSTS ============
 const STAT_BOOSTS = [
   { id: 'boost_str', name: '+5 Fuerza', emoji: '💪', stats: { strength: 5 } },
   { id: 'boost_def', name: '+5 Defensa', emoji: '🛡️', stats: { defense: 5 } },
@@ -109,13 +226,47 @@ const STAT_BOOSTS = [
   { id: 'boost_all', name: '+2 Todos los stats', emoji: '⭐', stats: { strength: 2, defense: 2, speed: 2, hp_max: 10 } },
 ];
 
-// ============ LEVEL UP CHOICES ============
+// ============ HELPER FUNCTIONS ============
+function getEquippedWeapons(character) {
+  const weapons = [];
+  if (character.weapon) weapons.push(character.weapon);
+  if (character.weapon2) weapons.push(character.weapon2);
+  if (character.weapon3) weapons.push(character.weapon3);
+  if (character.weapon4) weapons.push(character.weapon4);
+  return weapons;
+}
+
+function getActiveCombos(character) {
+  const equippedWeapons = getEquippedWeapons(character);
+  if (equippedWeapons.length === 0) return [];
+
+  const activeCombos = [];
+  for (const [comboId, combo] of Object.entries(WEAPON_COMBOS)) {
+    if (combo.weapons[0] === '__any_4_distinct__') {
+      const uniqueWeapons = new Set(equippedWeapons);
+      if (uniqueWeapons.size >= 4) activeCombos.push(combo);
+      continue;
+    }
+    if (combo.requireAccessory && character.accessory !== combo.requireAccessory) continue;
+    const required = [...combo.weapons];
+    const available = [...equippedWeapons];
+    let allFound = true;
+    for (const req of required) {
+      const idx = available.indexOf(req);
+      if (idx === -1) { allFound = false; break; }
+      available.splice(idx, 1);
+    }
+    if (allFound) activeCombos.push(combo);
+  }
+  return activeCombos;
+}
+
+// ============ LEVEL UP ============
 function generateLevelUpChoices(character) {
   const choices = [];
   const currentAbilities = JSON.parse(character.abilities || '[]');
   const currentInventory = JSON.parse(character.inventory || '[]');
 
-  // 1. Random weapon
   const weaponKeys = Object.keys(WEAPONS).filter(w => !currentInventory.some(i => i.type === 'weapon' && i.id === w));
   if (weaponKeys.length > 0) {
     const wKey = weaponKeys[Math.floor(Math.random() * weaponKeys.length)];
@@ -123,7 +274,6 @@ function generateLevelUpChoices(character) {
     choices.push({ type: 'weapon', id: wKey, name: w.name, emoji: w.emoji, desc: w.desc });
   }
 
-  // 2. Random ability
   const abilityKeys = Object.keys(ABILITIES).filter(a => !currentAbilities.includes(a));
   if (abilityKeys.length > 0) {
     const aKey = abilityKeys[Math.floor(Math.random() * abilityKeys.length)];
@@ -131,7 +281,6 @@ function generateLevelUpChoices(character) {
     choices.push({ type: 'ability', id: aKey, name: a.name, emoji: a.emoji, desc: a.desc });
   }
 
-  // 3. Random stat boost or armor/accessory
   const r = Math.random();
   if (r < 0.5) {
     const boost = STAT_BOOSTS[Math.floor(Math.random() * STAT_BOOSTS.length)];
@@ -158,18 +307,15 @@ function generateLevelUpChoices(character) {
     }
   }
 
-  // Ensure we have exactly 3 choices
   while (choices.length < 3) {
     const boost = STAT_BOOSTS[Math.floor(Math.random() * STAT_BOOSTS.length)];
     if (!choices.find(c => c.id === boost.id)) {
       choices.push({ type: 'boost', id: boost.id, name: boost.name, emoji: boost.emoji, desc: `Stats: ${Object.entries(boost.stats).map(([k,v]) => `+${v} ${k}`).join(', ')}` });
     }
   }
-
   return choices.slice(0, 3);
 }
 
-// ============ APPLY LEVEL UP CHOICE ============
 function applyLevelUpChoice(character, choice) {
   const updates = {};
   const inventory = JSON.parse(character.inventory || '[]');
@@ -179,8 +325,10 @@ function applyLevelUpChoice(character, choice) {
     case 'weapon':
       inventory.push({ type: 'weapon', id: choice.id });
       updates.inventory = JSON.stringify(inventory);
-      // Auto-equip if no weapon
       if (!character.weapon) updates.weapon = choice.id;
+      else if (!character.weapon2) updates.weapon2 = choice.id;
+      else if (!character.weapon3) updates.weapon3 = choice.id;
+      else if (!character.weapon4) updates.weapon4 = choice.id;
       break;
     case 'armor':
       inventory.push({ type: 'armor', id: choice.id });
@@ -207,11 +355,10 @@ function applyLevelUpChoice(character, choice) {
       break;
     }
   }
-
   return updates;
 }
 
-// ============ GET EFFECTIVE STATS (with equipment) ============
+// ============ GET EFFECTIVE STATS ============
 function getEffectiveStats(character) {
   const stats = {
     hp_max: character.hp_max,
@@ -220,11 +367,14 @@ function getEffectiveStats(character) {
     speed: character.speed,
   };
 
-  // Apply weapon
-  if (character.weapon && WEAPONS[character.weapon]) {
-    const w = WEAPONS[character.weapon];
-    stats.strength += (w.damage || 0);
-    stats.speed += (w.speed || 0);
+  // Apply ALL equipped weapons
+  const equippedWeapons = getEquippedWeapons(character);
+  for (const weaponId of equippedWeapons) {
+    if (WEAPONS[weaponId]) {
+      const w = WEAPONS[weaponId];
+      stats.strength += (w.damage || 0);
+      stats.speed += (w.speed || 0);
+    }
   }
 
   // Apply armor
@@ -244,6 +394,16 @@ function getEffectiveStats(character) {
     stats.hp_max += (a.hp || 0);
   }
 
+  // Apply combo stat bonuses
+  const activeCombos = getActiveCombos(character);
+  for (const combo of activeCombos) {
+    const b = combo.bonus;
+    if (b.strengthPercent) stats.strength = Math.floor(stats.strength * (1 + b.strengthPercent));
+    if (b.defensePercent) stats.defense = Math.floor(stats.defense * (1 + b.defensePercent));
+    if (b.speedPercent) stats.speed = Math.floor(stats.speed * (1 + b.speedPercent));
+    if (b.hpPercent) stats.hp_max = Math.floor(stats.hp_max * (1 + b.hpPercent));
+  }
+
   return stats;
 }
 
@@ -260,6 +420,19 @@ function simulateCombat(fighter1, fighter2) {
     f2: { name: f2.name, hp: f2.hp, hp_max: f2.hp_max, level: f2.level }
   });
 
+  // Log active combos
+  for (const f of [f1, f2]) {
+    for (const combo of f.activeCombos) {
+      log.push({
+        type: 'combo_activate',
+        fighter: f.name,
+        combo: combo.name,
+        emoji: combo.emoji,
+        text: `⚡ ¡${f.name} activa ${combo.emoji} ${combo.name}! ${combo.bonusDesc}`
+      });
+    }
+  }
+
   // War cry at start
   for (const f of [f1, f2]) {
     if (f.abilitySet.has('grito_guerra') && f.abilityUses.grito_guerra > 0) {
@@ -272,16 +445,54 @@ function simulateCombat(fighter1, fighter2) {
     }
   }
 
+  // Apply combo poison at start (cazador_letal)
+  for (const f of [f1, f2]) {
+    const other = f === f1 ? f2 : f1;
+    if (f.comboEffects.has('poison_combo')) {
+      const cd = f.comboData['poison_combo'];
+      other.poisoned = cd.poisonDuration;
+      other.poisonDmg = cd.poisonDamage;
+      log.push({
+        type: 'ability', fighter: f.name, ability: 'combo_poison',
+        text: `☠️ ¡${f.name} envenena a ${other.name} con ${f.activeCombos.find(c => c.bonus.effect === 'poison_combo').emoji} ${f.activeCombos.find(c => c.bonus.effect === 'poison_combo').name}!`
+      });
+    }
+  }
+
   let turn = 0;
   const maxTurns = 40;
 
+  // Pre-process: aura protectora
+  if (f1.abilitySet.has("aura_protectora")) f1.damageReduction = 0.15;
+  if (f2.abilitySet.has("aura_protectora")) f2.damageReduction = 0.15;
+
   while (f1.hp > 0 && f2.hp > 0 && turn < maxTurns) {
     turn++;
-    const f1Speed = f1.speed + Math.random() * 5;
-    const f2Speed = f2.speed + Math.random() * 5;
+    // Regeneration heal at turn start
+    for (const f of [f1, f2]) {
+      if (f.hp > 0 && f.abilitySet.has("regeneracion")) {
+        const regen = Math.floor(f.hp_max * 0.08);
+        f.hp = Math.min(f.hp + regen, f.hp_max);
+        if (regen > 0) log.push({ type: "heal", fighter: f.name, amount: regen, f1hp: f1.hp, f1hpMax: f1.hp_max, f2hp: f2.hp, f2hpMax: f2.hp_max, text: "💖 " + f.name + " regenera " + regen + " HP!" });
+      }
+      // Bendición divina check
+      if (f.hp > 0 && f.hp / f.hp_max <= 0.50 && f.abilitySet.has("bendicion") && f.abilityUses.bendicion > 0) {
+        f.abilityUses.bendicion--;
+        const heal = Math.floor(f.hp_max * 0.35);
+        f.hp = Math.min(f.hp + heal, f.hp_max);
+        log.push({ type: "heal", fighter: f.name, amount: heal, f1hp: f1.hp, f1hpMax: f1.hp_max, f2hp: f2.hp, f2hpMax: f2.hp_max, text: "✨ ¡" + f.name + " recibe una BENDICIÓN DIVINA! +" + heal + " HP!" });
+      }
+    }
+    let f1Speed = f1.speed + Math.random() * 5;
+    let f2Speed = f2.speed + Math.random() * 5;
+
+    // Alcance Supremo: always first
+    if (f1.comboEffects.has('always_first')) f1Speed += 1000;
+    if (f2.comboEffects.has('always_first')) f2Speed += 1000;
+
     const [attacker, defender] = f1Speed >= f2Speed ? [f1, f2] : [f2, f1];
 
-    processTurn(attacker, defender, turn, log);
+    processTurn(attacker, defender, turn, log, f1, f2);
     if (defender.hp <= 0) break;
 
     if (!defender.stunned) {
@@ -298,7 +509,7 @@ function simulateCombat(fighter1, fighter2) {
         const dmg = f.poisonDmg || 5;
         f.hp -= dmg;
         f.poisoned--;
-        log.push({ type: 'poison', fighter: f.name, damage: dmg, text: `☠️ ${f.name} recibe ${dmg} daño por veneno!` });
+        log.push({ type: 'poison', fighter: f.name, damage: dmg, f1hp: f1.hp, f1hpMax: f1.hp_max, f2hp: f2.hp, f2hpMax: f2.hp_max, text: `☠️ ${f.name} recibe ${dmg} daño por veneno!` });
         if (f.hp <= 0) break;
       }
     }
@@ -317,7 +528,6 @@ function simulateCombat(fighter1, fighter2) {
     }
   }
 
-  // Timeout - whoever has more HP% wins
   if (f1.hp > 0 && f2.hp > 0) {
     const f1pct = f1.hp / f1.hp_max;
     const f2pct = f2.hp / f2.hp_max;
@@ -349,6 +559,19 @@ function prepareFighter(data) {
   }
 
   const stats = getEffectiveStats(data);
+  const activeCombos = getActiveCombos(data);
+
+  const comboEffects = new Set();
+  const comboData = {};
+  for (const combo of activeCombos) {
+    if (combo.bonus.effect) {
+      comboEffects.add(combo.bonus.effect);
+      comboData[combo.bonus.effect] = combo.bonus;
+    }
+    if (combo.bonus.critPercent) {
+      comboData.critBonus = (comboData.critBonus || 0) + combo.bonus.critPercent;
+    }
+  }
 
   return {
     name: data.name,
@@ -365,11 +588,14 @@ function prepareFighter(data) {
     stunned: false,
     poisoned: 0,
     poisonDmg: 0,
-    firstHitDone: false
+    firstHitDone: false,
+    activeCombos,
+    comboEffects,
+    comboData
   };
 }
 
-function processTurn(attacker, defender, turn, log) {
+function processTurn(attacker, defender, turn, log, f1, f2) {
   // Dodge check
   let dodgeChance = 0.08 + (defender.speed - attacker.speed) * 0.006;
   if (defender.abilitySet.has('esquivar')) dodgeChance += 0.20;
@@ -389,8 +615,18 @@ function processTurn(attacker, defender, turn, log) {
   let isCritical = false;
   let extraEffects = [];
 
-  // Golpe crítico ability
-  if (attacker.abilitySet.has('golpe_critico') && Math.random() < 0.25) {
+  // Asesino combo: first strike x2.5
+  if (!attacker.firstHitDone && attacker.comboEffects.has('first_strike')) {
+    const mult = attacker.comboData['first_strike'].multiplier || 2.5;
+    damage = Math.floor(damage * mult);
+    extraEffects.push('🗡️🗡️ ¡GOLPE ASESINO!');
+  }
+
+  // Golpe crítico ability + combo crit bonus
+  let critChance = 0;
+  if (attacker.abilitySet.has('golpe_critico')) critChance += 0.25;
+  if (attacker.comboData.critBonus) critChance += attacker.comboData.critBonus;
+  if (critChance > 0 && Math.random() < critChance) {
     damage = Math.floor(damage * 2.0);
     isCritical = true;
     extraEffects.push('💥 ¡CRÍTICO!');
@@ -402,6 +638,15 @@ function processTurn(attacker, defender, turn, log) {
     extraEffects.push('🔥 ¡FURIA!');
   }
 
+  // Execute combo: bonus damage when defender is low HP
+  if (attacker.comboEffects.has('execute')) {
+    const cd = attacker.comboData['execute'];
+    if (defender.hp / defender.hp_max <= cd.threshold) {
+      damage = Math.floor(damage * (1 + cd.bonusDamage));
+      extraEffects.push('⚰️ ¡EJECUCIÓN!');
+    }
+  }
+
   // Grito de guerra buff
   const warBuff = attacker.buffs.find(b => b.type === 'grito_guerra');
   if (warBuff) damage = Math.floor(damage * (1 + warBuff.damageBonus));
@@ -409,6 +654,8 @@ function processTurn(attacker, defender, turn, log) {
   // Escudo defense
   if (defender.abilitySet.has('escudo')) damage = Math.floor(damage * 0.80);
 
+  // Aura protectora
+  if (defender.damageReduction) damage = Math.floor(damage * (1 - defender.damageReduction));
   // Defense reduction
   const defReduction = defender.defense * 0.7;
   damage = Math.max(1, Math.floor(damage - defReduction));
@@ -426,7 +673,7 @@ function processTurn(attacker, defender, turn, log) {
 
   defender.hp -= damage;
 
-  // Veneno on first hit
+  // Veneno on first hit (ability)
   if (!attacker.firstHitDone && attacker.abilitySet.has('veneno') && attacker.abilityUses.veneno > 0) {
     attacker.abilityUses.veneno--;
     defender.poisoned = 4;
@@ -435,6 +682,15 @@ function processTurn(attacker, defender, turn, log) {
     attacker.firstHitDone = true;
   }
   attacker.firstHitDone = true;
+
+  // Stun combo
+  if (attacker.comboEffects.has('stun_combo')) {
+    const cd = attacker.comboData['stun_combo'];
+    if (Math.random() < cd.chance) {
+      defender.stunned = true;
+      extraEffects.push('😵 ¡ATURDIDO!');
+    }
+  }
 
   // Healing check
   if (defender.hp > 0 && defender.hp / defender.hp_max <= 0.30 &&
@@ -458,12 +714,22 @@ function processTurn(attacker, defender, turn, log) {
     text: `${emoji} ${attacker.name} golpea a ${defender.name} por ${damage}! ${extraEffects.join(' ')}`
   });
 
-  // Vampiric
+  // Vampiric ability
   if (attacker.abilitySet.has('vampirico')) {
     const heal = Math.floor(damage * 0.20);
     attacker.hp = Math.min(attacker.hp + heal, attacker.hp_max);
     if (heal > 0) {
-      log.push({ type: 'lifesteal', fighter: attacker.name, amount: heal, text: `🧛 ${attacker.name} roba ${heal} HP!` });
+      log.push({ type: 'lifesteal', fighter: attacker.name, amount: heal, f1hp: f1.hp, f1hpMax: f1.hp_max, f2hp: f2.hp, f2hpMax: f2.hp_max, text: `🧛 ${attacker.name} roba ${heal} HP!` });
+    }
+  }
+
+  // Lifesteal combo (segador)
+  if (attacker.comboEffects.has('lifesteal_combo')) {
+    const cd = attacker.comboData['lifesteal_combo'];
+    const heal = Math.floor(damage * cd.lifeStealPercent);
+    attacker.hp = Math.min(attacker.hp + heal, attacker.hp_max);
+    if (heal > 0) {
+      log.push({ type: 'lifesteal', fighter: attacker.name, amount: heal, f1hp: f1.hp, f1hpMax: f1.hp_max, f2hp: f2.hp, f2hpMax: f2.hp_max, text: `⚰️ ${attacker.name} drena ${heal} HP!` });
     }
   }
 
@@ -471,21 +737,32 @@ function processTurn(attacker, defender, turn, log) {
   if (defender.hp > 0 && defender.abilitySet.has('espinas')) {
     const thornsDmg = Math.floor(damage * 0.30);
     attacker.hp -= thornsDmg;
-    log.push({ type: 'thorns', fighter: defender.name, target: attacker.name, damage: thornsDmg, text: `🌵 Espinas devuelven ${thornsDmg} daño!` });
+    log.push({ type: 'thorns', fighter: defender.name, target: attacker.name, damage: thornsDmg, f1hp: f1.hp, f1hpMax: f1.hp_max, f2hp: f2.hp, f2hpMax: f2.hp_max, text: `🌵 Espinas devuelven ${thornsDmg} daño!` });
   }
 
   // Counterattack
   if (defender.hp > 0 && defender.abilitySet.has('contraataque') && Math.random() < 0.25) {
     const counterDmg = Math.max(1, Math.floor(defender.strength * 1.2));
     attacker.hp -= counterDmg;
-    log.push({ type: 'counter', fighter: defender.name, target: attacker.name, damage: counterDmg, text: `🔄 ¡${defender.name} CONTRAATACA por ${counterDmg}!` });
+    log.push({ type: 'counter', fighter: defender.name, target: attacker.name, damage: counterDmg, f1hp: f1.hp, f1hpMax: f1.hp_max, f2hp: f2.hp, f2hpMax: f2.hp_max, text: `🔄 ¡${defender.name} CONTRAATACA por ${counterDmg}!` });
   }
 
-  // Double strike
+  // Double strike ability
   if (attacker.abilitySet.has('doble_golpe') && Math.random() < 0.20 && defender.hp > 0) {
     const secondDmg = Math.max(1, Math.floor(damage * 0.5));
     defender.hp -= secondDmg;
-    log.push({ type: 'double_strike', attacker: attacker.name, defender: defender.name, damage: secondDmg, text: `⚔️⚔️ ¡${attacker.name} golpea DOS VECES! +${secondDmg}!` });
+    log.push({ type: 'double_strike', attacker: attacker.name, defender: defender.name, damage: secondDmg, f1hp: f1.hp, f1hpMax: f1.hp_max, f2hp: f2.hp, f2hpMax: f2.hp_max, text: `⚔️⚔️ ¡${attacker.name} golpea DOS VECES! +${secondDmg}!` });
+  }
+
+  // Triple attack combo (lluvia_proyectiles)
+  if (attacker.comboEffects.has('triple_attack') && defender.hp > 0) {
+    const cd = attacker.comboData['triple_attack'];
+    if (Math.random() < cd.chance) {
+      const hit2 = Math.max(1, Math.floor(damage * 0.4));
+      const hit3 = Math.max(1, Math.floor(damage * 0.3));
+      defender.hp -= (hit2 + hit3);
+      log.push({ type: 'double_strike', attacker: attacker.name, defender: defender.name, damage: hit2 + hit3, f1hp: f1.hp, f1hpMax: f1.hp_max, f2hp: f2.hp, f2hpMax: f2.hp_max, text: `🔱🏹 ¡${attacker.name} lanza LLUVIA DE PROYECTILES! +${hit2 + hit3}!` });
+    }
   }
 }
 
@@ -505,10 +782,8 @@ function levelUp(character) {
     speed: character.speed + Math.floor(1 + Math.random() * 2),
   };
   changes.hp_base = changes.hp_max;
-
   const choices = generateLevelUpChoices(character);
   changes.pending_choices = JSON.stringify(choices);
-
   return { changes };
 }
 
@@ -519,5 +794,6 @@ function getAbilityDefs() {
 module.exports = {
   simulateCombat, levelUp, getXPForLevel, getAbilityDefs,
   generateLevelUpChoices, applyLevelUpChoice, getEffectiveStats,
-  ABILITIES, WEAPONS, ARMORS, ACCESSORIES, STAT_BOOSTS
+  getEquippedWeapons, getActiveCombos,
+  ABILITIES, WEAPONS, ARMORS, ACCESSORIES, STAT_BOOSTS, WEAPON_COMBOS
 };
