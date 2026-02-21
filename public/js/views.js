@@ -30,12 +30,14 @@ const Views = {
       '<div class="player-grid">' +
         players.map(function(p) {
           var hasChar = !!p.character;
+          var charCount = (p.characters || []).length;
           var imgUrl = getAvatarUrl(p.slug);
           return '<div class="player-card ' + (hasChar ? 'has-character' : '') + '" onclick="App.selectPlayer(\'' + p.slug + '\')">' +
             (hasChar ? '<div class="level-badge">Nv.' + p.character.level + '</div>' : '') +
+            (charCount > 1 ? '<div class="char-count-badge">' + charCount + '/3</div>' : '') +
             '<div class="avatar-img-sm"><img src="' + imgUrl + '" alt="' + p.display_name + '"></div>' +
             '<div class="name">' + p.display_name + '</div>' +
-            '<div class="status">' + (hasChar ? p.character.name : 'Sin personaje') + '</div>' +
+            '<div class="status">' + (hasChar ? p.character.name + (charCount > 1 ? ' +' + (charCount-1) : '') : 'Sin personaje') + '</div>' +
           '</div>';
         }).join('') +
       '</div>' +
@@ -43,6 +45,44 @@ const Views = {
         '<button class="btn btn-outline btn-sm" onclick="App.showLeaderboard()" style="width:auto;">🏆 Ranking</button>' +
         '<button class="btn btn-outline btn-sm" onclick="App.showTournament()" style="width:auto;">👑 Torneo</button>' +
       '</div>' +
+    '</div>';
+  },
+
+  // Character Selection (when player has multiple characters)
+  characterSelect(player, characters) {
+    var imgUrl = getAvatarUrl(player.slug);
+    var canCreate = characters.length < 3;
+    var firstCharGold = characters.length > 0 ? (characters[0].gold || 0) : 0;
+    var canAfford = firstCharGold >= 2500;
+
+    return '<div class="screen active">' +
+      '<div class="header">' +
+        '<button class="header-back" onclick="App.goBack()">←</button>' +
+        '<div class="header-title">👥 Personajes de ' + player.display_name + '</div>' +
+        '<div></div>' +
+      '</div>' +
+      '<div class="char-select-list">' +
+        characters.map(function(c) {
+          return '<div class="char-select-card" onclick="App.selectCharacter(' + c.id + ')">' +
+            '<div class="char-select-avatar"><img src="' + imgUrl + '" alt="' + c.name + '"></div>' +
+            '<div class="char-select-info">' +
+              '<div class="char-select-name">' + c.name + '</div>' +
+              '<div class="char-select-stats">Nv.' + c.level + ' | 💪' + c.strength + ' 🛡️' + c.defense + ' ⚡' + c.speed + ' | ' + c.wins + 'V/' + c.losses + 'D</div>' +
+              '<div class="char-select-gold">💰 ' + (c.gold || 0) + ' oro</div>' +
+            '</div>' +
+            '<div class="char-select-arrow">→</div>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+      (canCreate ? 
+        '<div class="create-new-char" onclick="' + (characters.length === 0 || canAfford ? "App.showCreateCharacter()" : "") + '" style="' + (!canAfford && characters.length > 0 ? 'opacity:0.5;cursor:not-allowed;' : '') + '">' +
+          '<div class="create-new-icon">➕</div>' +
+          '<div class="create-new-text">' +
+            '<div class="create-new-title">Crear nuevo personaje</div>' +
+            '<div class="create-new-cost">' + (characters.length === 0 ? '¡Gratis!' : '💰 2.500 oro' + (!canAfford ? ' (necesitas ' + (2500 - firstCharGold) + ' más)' : '')) + '</div>' +
+          '</div>' +
+        '</div>'
+      : '<div style="text-align:center;padding:16px;color:var(--text-dim);font-size:13px;">Máximo 3 personajes alcanzado</div>') +
     '</div>';
   },
 

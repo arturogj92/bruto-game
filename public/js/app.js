@@ -20,6 +20,7 @@ const App = {
     this.screenStack.pop();
     const prev = this.screenStack[this.screenStack.length - 1];
     if (prev === "hub") this.showHub();
+    else if (prev === "charselect") this.selectPlayer(this.currentPlayer.slug);
     else this.showPlayerSelect();
   },
   setScreen(html) { document.getElementById("app").innerHTML = html; },
@@ -39,15 +40,37 @@ const App = {
     try {
       const player = await API.getPlayer(slug);
       this.currentPlayer = player;
-      if (player.character) {
-        this.currentCharacter = player.character;
+      const chars = player.characters || [];
+      if (chars.length === 0) {
+        // No characters — go to create
+        this.pushScreen("create");
+        this.setScreen(Views.characterCreate(player));
+      } else if (chars.length === 1) {
+        // Single character — go directly to hub
+        this.currentCharacter = chars[0];
         this.pushScreen("hub");
         this.showHub();
       } else {
-        this.pushScreen("create");
-        this.setScreen(Views.characterCreate(player));
+        // Multiple characters — show selection
+        this.pushScreen("charselect");
+        this.setScreen(Views.characterSelect(player, chars));
       }
     } catch(e) { this.toast("Error: " + e.message, "error"); }
+  },
+
+  async selectCharacter(charId) {
+    try {
+      const char = await API.getCharacter(charId);
+      this.currentCharacter = char;
+      this.pushScreen("hub");
+      this.showHub();
+    } catch(e) { this.toast("Error: " + e.message, "error"); }
+  },
+
+  showCreateCharacter() {
+    if (!this.currentPlayer) return;
+    this.pushScreen("create");
+    this.setScreen(Views.characterCreate(this.currentPlayer));
   },
 
   async createCharacter() {
