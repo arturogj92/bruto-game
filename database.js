@@ -105,7 +105,20 @@ function init() {
       FOREIGN KEY (player_id) REFERENCES players(id),
       UNIQUE(player_id, combo_id)
     );
-  `);
+    CREATE TABLE IF NOT EXISTS challenges (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      challenger_id INTEGER NOT NULL,
+      challenged_id INTEGER NOT NULL,
+      bet_amount INTEGER NOT NULL DEFAULT 0,
+      accepted_bet INTEGER DEFAULT NULL,
+      status TEXT DEFAULT 'pending',
+      winner_id INTEGER DEFAULT NULL,
+      fight_log_id INTEGER DEFAULT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (challenger_id) REFERENCES characters(id),
+      FOREIGN KEY (challenged_id) REFERENCES characters(id)
+    );
+  `);;
 
   // Seed fixed players with avatar assignments
   const existingPlayers = db.prepare('SELECT COUNT(*) as c FROM players').get();
@@ -164,7 +177,7 @@ const getAllCharacters = () => db.prepare(`
 const createCharacter = (playerId, name) => {
   return db.prepare(`
     INSERT INTO characters (player_id, name, hp_max, hp_base, strength, defense, speed, gold)
-    VALUES (?, ?, 120, 120, 10, 10, 10, 0)
+    VALUES (?, ?, 120, 120, 10, 10, 10, 1000)
   `).run(playerId, name);
 };
 
@@ -186,6 +199,7 @@ const addFightLog = (data) => {
   `).run(data.char1_id, data.char2_id, data.winner_id, data.xp_winner, data.xp_loser, JSON.stringify(data.log));
 };
 
+const getFightLogById = (id) => {  return db.prepare("SELECT * FROM fight_log WHERE id = ?").get(id);};
 const getFightHistory = (charId, limit = 20) => {
   return db.prepare(`
     SELECT * FROM fight_log 
@@ -313,17 +327,119 @@ const getMyListings = (sellerId) => {
   return db.prepare('SELECT * FROM marketplace WHERE seller_id = ?').all(sellerId);
 };
 
+
+// ============ CHALLENGE QUERIES ============
+const createChallenge = (challengerId, challengedId, betAmount) => {
+  return db.prepare('INSERT INTO challenges (challenger_id, challenged_id, bet_amount) VALUES (?, ?, ?)').run(challengerId, challengedId, betAmount);
+};
+
+const getPendingChallenges = (charId) => {
+  // First expire old challenges and refund blocked gold
+  const expiring = db.prepare("SELECT id, challenger_id, bet_amount FROM challenges WHERE status = 'pending' AND created_at < datetime('now', '-24 hours')").all();
+  for (const exp of expiring) {
+    if (exp.bet_amount > 0) {
+      const ch = db.prepare('SELECT gold FROM characters WHERE id = ?').get(exp.challenger_id);
+      if (ch) {
+        db.prepare('UPDATE characters SET gold = ? WHERE id = ?').run((ch.gold || 0) + exp.bet_amount, exp.challenger_id);
+      }
+    }
+  }
+  db.prepare("UPDATE challenges SET status = 'expired' WHERE status = 'pending' AND created_at < datetime('now', '-24 hours')").run();
+  return db.prepare(`SELECT ch.*, 
+    c1.name as challenger_name, c1.level as challenger_level, c1.gold as challenger_gold,
+    p1.display_name as challenger_player, p1.slug as challenger_slug, p1.avatar as challenger_avatar,
+    c2.name as challenged_name, c2.level as challenged_level, c2.gold as challenged_gold,
+    p2.display_name as challenged_player, p2.slug as challenged_slug, p2.avatar as challenged_avatar
+    FROM challenges ch
+    JOIN characters c1 ON ch.challenger_id = c1.id
+    JOIN players p1 ON c1.player_id = p1.id
+    JOIN characters c2 ON ch.challenged_id = c2.id
+    JOIN players p2 ON c2.player_id = p2.id
+    WHERE (ch.challenged_id = ? OR ch.challenger_id = ?) 
+    AND ch.status = 'pending'
+    AND ch.created_at >= datetime('now', '-24 hours')
+    ORDER BY ch.created_at DESC`).all(charId, charId);
+};
+
+const getChallengeById = (id) => {
+  return db.prepare('SELECT * FROM challenges WHERE id = ?').get(id);
+};
+
+const countPendingChallenges = (charId) => {
+  return db.prepare("SELECT COUNT(*) as count FROM challenges WHERE challenger_id = ? AND status = 'pending' AND created_at >= datetime('now', '-24 hours')").get(charId);
+};
+
+const completeChallenge = (id, winnerId, fightLogId, acceptedBet) => {
+  return db.prepare("UPDATE challenges SET status = 'completed', winner_id = ?, fight_log_id = ?, accepted_bet = ? WHERE id = ?").run(winnerId, fightLogId, acceptedBet, id);
+};
+
+const declineChallenge = (id) => {
+  return db.prepare("UPDATE challenges SET status = 'declined' WHERE id = ?").run(id);
+};
+
+const countIncomingPending = (charId) => {
+  // Expire and refund in getPendingChallenges, here just count
+  return db.prepare("SELECT COUNT(*) as count FROM challenges WHERE challenged_id = ? AND status = 'pending' AND created_at >= datetime('now', '-24 hours')").get(charId);
+};
+
+
+// ============ COMBAT HISTORY TABLE ============
+function initCombatHistory() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS combat_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      char1_id INTEGER NOT NULL,
+      char2_id INTEGER NOT NULL,
+      char1_name TEXT,
+      char2_name TEXT,
+      winner_id INTEGER,
+      is_pve INTEGER DEFAULT 0,
+      pve_difficulty TEXT,
+      char1_xp INTEGER DEFAULT 0,
+      char2_xp INTEGER DEFAULT 0,
+      char1_gold INTEGER DEFAULT 0,
+      char2_gold INTEGER DEFAULT 0,
+      wager INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+}
+
+const addCombatHistory = (data) => {
+  return db.prepare(`
+    INSERT INTO combat_history (char1_id, char2_id, char1_name, char2_name, winner_id, is_pve, pve_difficulty, char1_xp, char2_xp, char1_gold, char2_gold, wager)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    data.char1_id, data.char2_id, data.char1_name || null, data.char2_name || null,
+    data.winner_id, data.is_pve ? 1 : 0, data.pve_difficulty || null,
+    data.char1_xp || 0, data.char2_xp || 0,
+    data.char1_gold || 0, data.char2_gold || 0,
+    data.wager || 0
+  );
+};
+
+const getCombatHistory = (charId, limit = 50) => {
+  return db.prepare(`
+    SELECT * FROM combat_history
+    WHERE char1_id = ? OR char2_id = ?
+    ORDER BY created_at DESC LIMIT ?
+  `).all(charId, charId, limit);
+};
+
 module.exports = {
+  initCombatHistory, addCombatHistory, getCombatHistory,
   db, init,
   getPlayers, getPlayer, getPlayerById,
   getCharacter, getCharacterById, getAllCharacters,
   createCharacter, updateCharacter,
-  addFightLog, getFightHistory,
+  addFightLog, getFightLogById, getFightHistory,
   getActiveTournament, createTournament, updateTournament,
   getTournamentMatches, createTournamentMatch, updateTournamentMatch,
   resetDB,
   getPveFightsHour, addPveFight, getMinLevel, getMaxLevel,
   getDiscoveries, addDiscovery, hasDiscovery,
   getMarketplaceListings, getMarketplaceListing, addMarketplaceListing,
-  removeMarketplaceListing, getMyListings
+  removeMarketplaceListing, getMyListings,
+  createChallenge, getPendingChallenges, getChallengeById,
+  countPendingChallenges, completeChallenge, declineChallenge, countIncomingPending
 };

@@ -92,7 +92,12 @@ const Views = {
       '<div class="header">' +
         '<button class="header-back" onclick="App.goBack()">←</button>' +
         '<div class="header-title">⚔️ Arena</div>' +
-        '<div class="header-player"><strong>' + player.display_name + '</strong></div>' +
+        '<div class="header-right">' +
+          '<button class="notif-bell" id="notif-bell" onclick="App.showChallenges()">' +
+            '🔔<span class="notif-badge" id="notif-badge" style="display:none;">0</span>' +
+          '</button>' +
+          '<div class="header-player"><strong>' + player.display_name + '</strong></div>' +
+        '</div>' +
       '</div>' +
 
       '<div class="stats-card">' +
@@ -142,6 +147,11 @@ const Views = {
           '<div class="action-name">Retar Jugador</div>' +
           '<div class="action-desc">Elige rival</div>' +
         '</div>' +
+        '<div class="action-card action-challenge" onclick="App.showChallengeCreate()">' +
+          '<div class="action-icon">🎲</div>' +
+          '<div class="action-name">Retar con Apuesta</div>' +
+          '<div class="action-desc">Reta y apuesta oro</div>' +
+        '</div>' +
         '<div class="action-card" onclick="App.showLeaderboard()">' +
           '<div class="action-icon">🏆</div>' +
           '<div class="action-name">Ranking</div>' +
@@ -151,6 +161,16 @@ const Views = {
           '<div class="action-icon">👑</div>' +
           '<div class="action-name">Torneo</div>' +
           '<div class="action-desc">Eliminatorio</div>' +
+        '</div>' +
+        '<div class="action-card action-market" onclick="App.showMarket()">' +
+          '<div class="action-icon">🏪</div>' +
+          '<div class="action-name">Mercado</div>' +
+          '<div class="action-desc">Compra y vende</div>' +
+        '</div>' +
+        '<div class="action-card" onclick="App.showHistory()">' +
+          '<div class="action-icon">📜</div>' +
+          '<div class="action-name">Historial</div>' +
+          '<div class="action-desc">Tus combates</div>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -621,4 +641,225 @@ const Views = {
       contentHtml +
     '</div>';
   }
+,
+
+  // ============ CHALLENGES / RETOS ============
+  challengesModal(challenges, myCharId) {
+    var incoming = challenges.filter(function(c) { return c.challenged_id === myCharId; });
+    var outgoing = challenges.filter(function(c) { return c.challenger_id === myCharId; });
+
+    var incomingHtml = incoming.length === 0 ?
+      '<p class="empty-text">No tienes retos pendientes</p>' :
+      incoming.map(function(c) {
+        var timeAgo = Views.timeAgo(c.created_at);
+        return '<div class="challenge-card incoming">' +
+          '<div class="challenge-header">' +
+            '<div class="challenge-avatar"><img src="' + getAvatarUrl(c.challenger_slug || c.challenger_avatar) + '" alt=""></div>' +
+            '<div class="challenge-info">' +
+              '<div class="challenge-name">' + c.challenger_name + '</div>' +
+              '<div class="challenge-player">' + c.challenger_player + ' · Nv.' + c.challenger_level + '</div>' +
+            '</div>' +
+            '<div class="challenge-bet">' +
+              '<div class="challenge-bet-label">Apuesta</div>' +
+              '<div class="challenge-bet-amount">\u{1FA99} ' + c.bet_amount + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="challenge-time">' + timeAgo + '</div>' +
+          '<div class="challenge-actions">' +
+            '<div class="challenge-accept-row">' +
+              '<label class="challenge-accept-label">Tu apuesta:</label>' +
+              '<input type="number" class="challenge-bet-input" id="accept-bet-' + c.id + '" placeholder="0" min="0" value="' + c.bet_amount + '">' +
+              '<span class="challenge-bet-hint">\u{1FA99}</span>' +
+            '</div>' +
+            '<div class="challenge-btn-row">' +
+              '<button class="btn btn-sm btn-gold challenge-accept-btn" onclick="App.acceptChallenge(' + c.id + ')">⚔️ Aceptar</button>' +
+              '<button class="btn btn-sm btn-outline challenge-decline-btn" onclick="App.declineChallenge(' + c.id + ')">❌ Rechazar</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+    var outgoingHtml = outgoing.length === 0 ?
+      '<p class="empty-text">No has enviado retos</p>' :
+      outgoing.map(function(c) {
+        var timeAgo = Views.timeAgo(c.created_at);
+        return '<div class="challenge-card outgoing">' +
+          '<div class="challenge-header">' +
+            '<div class="challenge-avatar"><img src="' + getAvatarUrl(c.challenged_slug || c.challenged_avatar) + '" alt=""></div>' +
+            '<div class="challenge-info">' +
+              '<div class="challenge-name">' + c.challenged_name + '</div>' +
+              '<div class="challenge-player">' + c.challenged_player + ' · Nv.' + c.challenged_level + '</div>' +
+            '</div>' +
+            '<div class="challenge-bet">' +
+              '<div class="challenge-bet-label">Tu apuesta</div>' +
+              '<div class="challenge-bet-amount">\u{1FA99} ' + c.bet_amount + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="challenge-time">Enviado ' + timeAgo + ' · Esperando respuesta...</div>' +
+        '</div>';
+      }).join('');
+
+    return '<div class="modal-overlay" id="challenges-modal" onclick="if(event.target===this)App.closeChallenges()">' +
+      '<div class="modal-content challenges-modal-content">' +
+        '<div class="challenges-modal-header">' +
+          '<h2>🎲 Retos</h2>' +
+          '<button class="modal-close" onclick="App.closeChallenges()">✕</button>' +
+        '</div>' +
+        '<div class="challenges-tabs">' +
+          '<div class="challenges-tab active" onclick="Views.switchChallengeTab(\'incoming\', this)">📥 Recibidos (' + incoming.length + ')</div>' +
+          '<div class="challenges-tab" onclick="Views.switchChallengeTab(\'outgoing\', this)">📤 Enviados (' + outgoing.length + ')</div>' +
+        '</div>' +
+        '<div class="challenges-tab-content" id="challenges-incoming" style="display:block;">' +
+          incomingHtml +
+        '</div>' +
+        '<div class="challenges-tab-content" id="challenges-outgoing" style="display:none;">' +
+          outgoingHtml +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  },
+
+  challengeCreateScreen(opponents, character) {
+    return '<div class="screen active">' +
+      '<div class="header">' +
+        '<button class="header-back" onclick="App.showHub()">←</button>' +
+        '<div class="header-title">🎲 Crear Reto</div>' +
+        '<div class="header-gold">\u{1FA99} ' + (character.gold || 0) + '</div>' +
+      '</div>' +
+      '<div class="challenge-create-info">' +
+        '<p>Elige un rival y apuesta oro. El ganador se lleva todo.</p>' +
+      '</div>' +
+      (opponents.length === 0 ?
+        '<div style="text-align:center; padding:40px; color:var(--text-dim);">' +
+          '<div style="font-size:48px;">😴</div><p>No hay oponentes disponibles.</p>' +
+        '</div>' :
+        '<div class="challenge-bet-setup">' +
+          '<label class="challenge-bet-setup-label">\u{1FA99} Tu apuesta de oro:</label>' +
+          '<input type="number" id="challenge-bet-amount" class="challenge-bet-input-big" placeholder="0" min="0" max="' + (character.gold || 0) + '" value="0">' +
+        '</div>' +
+        '<div class="opponent-list">' +
+          opponents.map(function(opp) {
+            var imgUrl = getAvatarUrl(opp.player_slug || opp.player_avatar);
+            return '<div class="opponent-card challenge-opponent" onclick="App.sendChallenge(' + opp.id + ')">' +
+              '<div class="opp-avatar-img"><img src="' + imgUrl + '" alt="' + opp.name + '"></div>' +
+              '<div class="opp-info">' +
+                '<div class="opp-name">' + opp.name + '</div>' +
+                '<div class="opp-stats">Nv.' + opp.level + ' | 💪' + opp.strength + ' 🛡️' + opp.defense + ' ⚡' + opp.speed + ' | ' + opp.player_name + '</div>' +
+              '</div>' +
+              '<div class="challenge-send-icon">🎲</div>' +
+            '</div>';
+          }).join('') +
+        '</div>'
+      ) +
+    '</div>';
+  },
+
+  challengeResultScreen(result, myCharId) {
+    var isWin = result.winnerId === myCharId;
+    var myBet = result.challengedBet;
+    var oppBet = result.challengerBet;
+    // If I was the challenger
+    if (result.challenger && result.challenger.id === myCharId) {
+      myBet = result.challengerBet;
+      oppBet = result.challengedBet;
+    }
+    var goldChange = isWin ? oppBet : -myBet;
+
+    return '<div class="victory-screen">' +
+      '<div class="victory-crown">' + (isWin ? '🏆' : '💀') + '</div>' +
+      '<div class="victory-text ' + (isWin ? '' : 'defeat-text') + '">' + (isWin ? '¡VICTORIA!' : '¡DERROTA!') + '</div>' +
+      '<div class="challenge-result-bets">' +
+        '<div class="challenge-result-pot">Bote total: \u{1FA99} ' + result.totalPot + '</div>' +
+        (goldChange > 0 ?
+          '<div class="challenge-result-gold win">+' + goldChange + ' oro ganado</div>' :
+          goldChange < 0 ?
+          '<div class="challenge-result-gold lose">' + goldChange + ' oro perdido</div>' :
+          '<div class="challenge-result-gold">Sin cambio de oro</div>') +
+      '</div>' +
+      '<button class="btn btn-gold" onclick="App.closeChallengeResult()" style="max-width:300px;">Continuar</button>' +
+    '</div>';
+  },
+
+  timeAgo(dateStr) {
+    var now = Date.now();
+    var then = new Date(dateStr + (dateStr.endsWith('Z') ? '' : 'Z')).getTime();
+    var diff = Math.floor((now - then) / 1000);
+    if (diff < 60) return 'hace ' + diff + 's';
+    if (diff < 3600) return 'hace ' + Math.floor(diff / 60) + 'min';
+    if (diff < 86400) return 'hace ' + Math.floor(diff / 3600) + 'h';
+    return 'hace ' + Math.floor(diff / 86400) + 'd';
+  }
+
+};
+
+Views.switchChallengeTab = function(tab, el) {
+  document.querySelectorAll('.challenges-tab').forEach(function(t) { t.classList.remove('active'); });
+  el.classList.add('active');
+  document.querySelectorAll('.challenges-tab-content').forEach(function(c) { c.style.display = 'none'; });
+  document.getElementById('challenges-' + tab).style.display = 'block';
+};
+
+
+Views.historyScreen = function(history, character) {
+  var NPC_EMOJIS = {
+    campesino: '\u{1F9D1}\u200D\u{1F33E}',
+    bandido: '\u{1F5E1}\uFE0F',
+    gladiador: '\u2694\uFE0F',
+    bestia: '\u{1F432}'
+  };
+  var NPC_LABELS = { campesino: 'Campesino', bandido: 'Bandido', gladiador: 'Gladiador', bestia: 'Bestia' };
+
+  var entriesHtml = '';
+  if (history.length === 0) {
+    entriesHtml = '<div style="text-align:center; padding:40px; color:var(--text-dim);">' +
+      '<div style="font-size:48px;">\u{1F4DC}</div><p>No hay combates registrados a\u00fan.</p>' +
+      '<p style="font-size:12px;">\u00A1Pelea para llenar tu historial!</p>' +
+    '</div>';
+  } else {
+    entriesHtml = '<div class="history-list">' +
+      history.map(function(h) {
+        var isChar1 = h.char1_id === character.id;
+        var isWin = h.winner_id === character.id;
+        var oppName = isChar1 ? h.char2_name : h.char1_name;
+        var myXP = isChar1 ? h.char1_xp : h.char2_xp;
+        var myGold = isChar1 ? h.char1_gold : h.char2_gold;
+        var isPvE = h.is_pve === 1;
+        var diffEmoji = isPvE && h.pve_difficulty ? (NPC_EMOJIS[h.pve_difficulty] || '\u{1F47E}') : '';
+        var diffLabel = isPvE && h.pve_difficulty ? NPC_LABELS[h.pve_difficulty] || h.pve_difficulty : '';
+        
+        var date = h.created_at ? new Date(h.created_at + 'Z') : new Date();
+        var dateStr = date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+        return '<div class="history-entry ' + (isWin ? 'history-win' : 'history-loss') + '">' +
+          '<div class="history-result-badge">' + (isWin ? '\u2705 WIN' : '\u274C LOSS') + '</div>' +
+          '<div class="history-main">' +
+            '<div class="history-opponent">' +
+              (isPvE ? '<span class="history-pve-badge">' + diffEmoji + ' ' + diffLabel + '</span> ' : '') +
+              '<span class="history-opp-name">' + (oppName || 'Desconocido') + '</span>' +
+            '</div>' +
+            '<div class="history-rewards">' +
+              (myXP > 0 ? '<span class="history-xp">+' + myXP + ' XP</span>' : '') +
+              (myGold !== 0 ? '<span class="history-gold ' + (myGold >= 0 ? 'positive' : 'negative') + '">\u{1FA99} ' + (myGold >= 0 ? '+' : '') + myGold + '</span>' : '') +
+              (h.wager > 0 ? '<span class="history-wager">\u{1F3B2} ' + h.wager + '</span>' : '') +
+            '</div>' +
+          '</div>' +
+          '<div class="history-date">' + dateStr + '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
+
+  return '<div class="screen active">' +
+    '<div class="header">' +
+      '<button class="header-back" onclick="App.showHub()">\u2190</button>' +
+      '<div class="header-title">\u{1F4DC} Historial</div>' +
+      '<div class="header-player"><strong>' + character.name + '</strong></div>' +
+    '</div>' +
+    '<div class="history-stats">' +
+      '<span class="history-stat-item">\u2705 ' + (character.wins || 0) + ' V</span>' +
+      '<span class="history-stat-item">\u274C ' + (character.losses || 0) + ' D</span>' +
+      '<span class="history-stat-item">\u{1F4CA} ' + history.length + ' combates</span>' +
+    '</div>' +
+    entriesHtml +
+  '</div>';
 };

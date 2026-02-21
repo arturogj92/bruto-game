@@ -10,6 +10,10 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 db.init();
+db.initCombatHistory();
+
+// In-memory active combats store
+const activeCombats = {};
 
 // ============ GOLD HELPERS ============
 function calcPvPGold(winnerLevel) {
@@ -187,11 +191,21 @@ app.post('/api/fight/matchmaking', (req, res) => {
     log: result.log
   });
 
+  // Combat history
+  db.addCombatHistory({
+    char1_id: char.id, char2_id: opponent.id,
+    char1_name: char.name, char2_name: opponent.name,
+    winner_id: winnerId, is_pve: false,
+    char1_xp: myXP, char2_xp: oppXP,
+    char1_gold: myGold, char2_gold: oppGold,
+    wager: 0
+  });
+
   const updatedChar = db.getCharacterById(char.id);
   const updatedOpp = db.getCharacterById(opponent.id);
   const oppPlayer = db.getPlayerById(opponent.player_id);
 
-  res.json({
+  const matchmakingResponse = {
     result: isWin ? 'win' : 'lose',
     log: result.log,
     xpGained: myXP,
@@ -200,7 +214,14 @@ app.post('/api/fight/matchmaking', (req, res) => {
     pendingChoices: leveledUp && updatedChar.pending_choices ? JSON.parse(updatedChar.pending_choices) : null,
     character: updatedChar,
     opponent: { ...updatedOpp, player_name: oppPlayer?.display_name, player_avatar: oppPlayer?.avatar }
-  });
+  };
+
+  // Store active combat for redirect
+  activeCombats[char.id] = matchmakingResponse;
+  activeCombats[opponent.id] = matchmakingResponse;
+  setTimeout(() => { delete activeCombats[char.id]; delete activeCombats[opponent.id]; }, 120000);
+
+  res.json(matchmakingResponse);
 });
 
 // Direct PVP fight
@@ -638,10 +659,21 @@ app.post('/api/fight/pve', (req, res) => {
     log: result.log
   });
 
+  // Combat history
+  db.addCombatHistory({
+    char1_id: char.id, char2_id: -1,
+    char1_name: char.name, char2_name: npc.name,
+    winner_id: isWin ? char.id : -1,
+    is_pve: true, pve_difficulty: difficulty,
+    char1_xp: xpGained, char2_xp: 0,
+    char1_gold: goldGained, char2_gold: 0,
+    wager: 0
+  });
+
   const updatedChar = db.getCharacterById(char.id);
   const updatedFights = db.getPveFightsHour(char.id);
 
-  res.json({
+  const pveResponse = {
     result: isWin ? 'win' : 'lose',
     log: result.log,
     xpGained,
@@ -652,7 +684,13 @@ app.post('/api/fight/pve', (req, res) => {
     npc: { name: npc.name, level: npc.level, difficulty },
     fightsToday: updatedFights.count,
     maxFights: 20
-  });
+  };
+
+  // Store active combat for redirect
+  activeCombats[char.id] = pveResponse;
+  setTimeout(() => { delete activeCombats[char.id]; }, 120000);
+
+  res.json(pveResponse);
 });
 
 
@@ -746,6 +784,235 @@ app.post('/api/marketplace/cancel', (req, res) => {
   db.removeMarketplaceListing(listing.id);
   res.json({ success: true, character: db.getCharacterById(char.id) });
 });
+
+
+// ============ CHALLENGES / RETOS ============
+
+// Create a challenge
+app.post('/api/challenge', (req, res) => {
+  const { challenger_id, challenged_id, bet_amount } = req.body;
+  if (!challenger_id || !challenged_id || bet_amount === undefined) {
+    return res.status(400).json({ error: 'Faltan datos: challenger_id, challenged_id, bet_amount' });
+  }
+  if (challenger_id === challenged_id) {
+    return res.status(400).json({ error: 'No puedes retarte a ti mismo' });
+  }
+  const bet = parseInt(bet_amount);
+  if (isNaN(bet) || bet < 0) {
+    return res.status(400).json({ error: 'Apuesta inválida' });
+  }
+
+  const challenger = db.getCharacterById(challenger_id);
+  if (!challenger) return res.status(404).json({ error: 'Retador no encontrado' });
+  
+  const challenged = db.getCharacterById(challenged_id);
+  if (!challenged) return res.status(404).json({ error: 'Retado no encontrado' });
+
+  if (bet > 0 && (challenger.gold || 0) < bet) {
+    return res.status(400).json({ error: 'No tienes suficiente oro. Tienes ' + (challenger.gold || 0) + ' y apuestas ' + bet });
+  }
+
+  // Max 3 pending challenges per player
+  const pending = db.countPendingChallenges(challenger_id);
+  if (pending.count >= 3) {
+    return res.status(400).json({ error: 'Máximo 3 retos pendientes. Espera a que respondan.' });
+  }
+
+  // Block gold from challenger immediately
+  if (bet > 0) {
+    db.updateCharacter(challenger_id, { gold: (challenger.gold || 0) - bet });
+  }
+
+  const result = db.createChallenge(challenger_id, challenged_id, bet);
+  res.json({ success: true, challengeId: result.lastInsertRowid, goldBlocked: bet });
+});
+
+// Get pending challenges for a character
+app.get('/api/challenges/:charId', (req, res) => {
+  const charId = parseInt(req.params.charId);
+  const challenges = db.getPendingChallenges(charId);
+  res.json(challenges);
+});
+
+// Count incoming pending challenges (for badge)
+app.get('/api/challenges/:charId/count', (req, res) => {
+  const charId = parseInt(req.params.charId);
+  const result = db.countIncomingPending(charId);
+  res.json({ count: result.count });
+});
+
+// Accept a challenge
+app.post('/api/challenge/:id/accept', (req, res) => {
+  const challengeId = parseInt(req.params.id);
+  const { accepted_bet } = req.body;
+  
+  const challenge = db.getChallengeById(challengeId);
+  if (!challenge) return res.status(404).json({ error: 'Reto no encontrado' });
+  if (challenge.status !== 'pending') return res.status(400).json({ error: 'Este reto ya no está pendiente' });
+
+  // Check if expired (24h)
+  const createdAt = new Date(challenge.created_at + 'Z').getTime();
+  if (Date.now() - createdAt > 24 * 60 * 60 * 1000) {
+    // Refund blocked gold to challenger
+    if (challenge.bet_amount > 0) {
+      const challengerRefund = db.getCharacterById(challenge.challenger_id);
+      if (challengerRefund) {
+        db.updateCharacter(challengerRefund.id, { gold: (challengerRefund.gold || 0) + challenge.bet_amount });
+      }
+    }
+    db.declineChallenge(challengeId);
+    return res.status(400).json({ error: 'Este reto ha expirado (24h)' });
+  }
+
+  const acceptBet = parseInt(accepted_bet) || 0;
+  if (acceptBet < 0) return res.status(400).json({ error: 'Apuesta inválida' });
+
+  const challenger = db.getCharacterById(challenge.challenger_id);
+  const challenged = db.getCharacterById(challenge.challenged_id);
+  if (!challenger || !challenged) return res.status(404).json({ error: 'Personaje no encontrado' });
+
+  // Challenger's gold was already blocked on creation, no need to check again
+  // But verify challenged has enough
+  if (acceptBet > 0 && (challenged.gold || 0) < acceptBet) {
+    return res.status(400).json({ error: 'No tienes suficiente oro. Tienes ' + (challenged.gold || 0) + ' y apuestas ' + acceptBet });
+  }
+
+  // Run the combat
+  const result = combat.simulateCombat(challenger, challenged);
+  const winnerId = result.winner_id;
+  const loserId = result.loser_id;
+  const isWin = winnerId === challenged.id; // from perspective of the challenged
+
+  // Save fight log
+  const fightResult = db.addFightLog({
+    char1_id: challenger.id,
+    char2_id: challenged.id,
+    winner_id: winnerId,
+    xp_winner: 0,
+    xp_loser: 0,
+    log: result.log
+  });
+
+  // Combat history for challenge
+  db.addCombatHistory({
+    char1_id: challenger.id, char2_id: challenged.id,
+    char1_name: challenger.name, char2_name: challenged.name,
+    winner_id: winnerId, is_pve: false,
+    char1_xp: 0, char2_xp: 0,
+    char1_gold: 0, char2_gold: 0,
+    wager: challenge.bet_amount + (parseInt(req.body.accepted_bet) || 0)
+  });
+
+  // Gold transfer: challenger's gold was already blocked on creation
+  // Block challenged's bet now
+  const challengerBet = challenge.bet_amount;
+  const challengedBet = acceptBet;
+  const totalPot = challengerBet + challengedBet;
+
+  // Re-read characters for accurate gold (challenger's was already deducted)
+  const challengerNow = db.getCharacterById(challenger.id);
+  const challengedNow = db.getCharacterById(challenged.id);
+
+  if (totalPot > 0) {
+    if (winnerId === challenger.id) {
+      // Challenger wins: refund own bet + get challenged's bet
+      db.updateCharacter(challenger.id, { gold: (challengerNow.gold || 0) + challengerBet + challengedBet });
+      db.updateCharacter(challenged.id, { gold: (challengedNow.gold || 0) - challengedBet });
+    } else {
+      // Challenged wins: gets challenger's blocked bet, loses own bet to nowhere (already blocked)
+      // Challenger's gold was already deducted, challenged gets the full pot
+      db.updateCharacter(challenged.id, { gold: (challengedNow.gold || 0) - challengedBet + totalPot });
+      // Challenger already lost their gold (was blocked), no change needed
+    }
+  } else {
+    // No bets, refund challenger's blocked gold (was 0 anyway)
+  }
+
+  // Mark challenge as completed
+  db.completeChallenge(challengeId, winnerId, fightResult.lastInsertRowid, acceptBet);
+
+  // Get updated characters
+  const updatedChallenger = db.getCharacterById(challenger.id);
+  const updatedChallenged = db.getCharacterById(challenged.id);
+  const challengerPlayer = db.getPlayerById(challenger.player_id);
+  const challengedPlayer = db.getPlayerById(challenged.player_id);
+
+  res.json({
+    success: true,
+    winnerId,
+    loserId,
+    log: result.log,
+    challengerBet,
+    challengedBet,
+    totalPot,
+    challenger: { ...updatedChallenger, player_name: challengerPlayer?.display_name, player_slug: challengerPlayer?.slug, player_avatar: challengerPlayer?.avatar },
+    challenged: { ...updatedChallenged, player_name: challengedPlayer?.display_name, player_slug: challengedPlayer?.slug, player_avatar: challengedPlayer?.avatar }
+  });
+});
+
+// Decline a challenge
+app.post('/api/challenge/:id/decline', (req, res) => {
+  const challengeId = parseInt(req.params.id);
+  const challenge = db.getChallengeById(challengeId);
+  if (!challenge) return res.status(404).json({ error: 'Reto no encontrado' });
+  if (challenge.status !== 'pending') return res.status(400).json({ error: 'Este reto ya no está pendiente' });
+
+  // Refund blocked gold to challenger
+  if (challenge.bet_amount > 0) {
+    const challenger = db.getCharacterById(challenge.challenger_id);
+    if (challenger) {
+      db.updateCharacter(challenger.id, { gold: (challenger.gold || 0) + challenge.bet_amount });
+    }
+  }
+
+  db.declineChallenge(challengeId);
+  res.json({ success: true });
+});
+
+// Get challenge result
+app.get('/api/challenge/:id/result', (req, res) => {
+  const challengeId = parseInt(req.params.id);
+  const challenge = db.getChallengeById(challengeId);
+  if (!challenge) return res.status(404).json({ error: 'Reto no encontrado' });
+  
+  const challenger = db.getCharacterById(challenge.challenger_id);
+  const challenged = db.getCharacterById(challenge.challenged_id);
+  const challengerPlayer = challenger ? db.getPlayerById(challenger.player_id) : null;
+  const challengedPlayer = challenged ? db.getPlayerById(challenged.player_id) : null;
+  
+  let fightLog = null;
+  if (challenge.fight_log_id) {
+    const log = db.getFightLogById(challenge.fight_log_id);
+    if (log) fightLog = JSON.parse(log.log);
+  }
+
+  res.json({
+    ...challenge,
+    fightLog,
+    challenger: challenger ? { ...challenger, player_name: challengerPlayer?.display_name, player_slug: challengerPlayer?.slug, player_avatar: challengerPlayer?.avatar } : null,
+    challenged: challenged ? { ...challenged, player_name: challengedPlayer?.display_name, player_slug: challengedPlayer?.slug, player_avatar: challengedPlayer?.avatar } : null
+  });
+});
+// ============ COMBAT HISTORY ============
+app.get('/api/history/:charId', (req, res) => {
+  const charId = parseInt(req.params.charId);
+  if (!charId) return res.status(400).json({ error: 'charId invalido' });
+  const history = db.getCombatHistory(charId, 50);
+  res.json(history);
+});
+
+// ============ ACTIVE COMBAT ============
+app.get('/api/combat/active/:charId', (req, res) => {
+  const charId = parseInt(req.params.charId);
+  const activeCombat = activeCombats[charId];
+  if (activeCombat) {
+    res.json({ active: true, data: activeCombat });
+  } else {
+    res.json({ active: false });
+  }
+});
+
+
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

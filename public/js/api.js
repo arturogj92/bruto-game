@@ -60,3 +60,25 @@ API.buyFromMarketplace = function(charId, listingId) {
 API.cancelListing = function(charId, listingId) {
   return API.post('/api/marketplace/cancel', { charId, listingId });
 };
+
+
+// ============ CHALLENGES / RETOS ============
+API.createChallenge = function(challengerId, challengedId, betAmount) {
+  return API.post('/api/challenge', { challenger_id: challengerId, challenged_id: challengedId, bet_amount: betAmount });
+};
+API.getChallenges = function(charId) {
+  return API.get('/api/challenges/' + charId);
+};
+API.getChallengeCount = function(charId) {
+  return API.get('/api/challenges/' + charId + '/count');
+};
+API.acceptChallenge = function(challengeId, acceptedBet) {
+  return API.post('/api/challenge/' + challengeId + '/accept', { accepted_bet: acceptedBet });
+};
+API.declineChallenge = function(challengeId) {
+  return API.post('/api/challenge/' + challengeId + '/decline', {});
+};
+
+// Combat History & Active Combat
+API.getCombatHistory = function(charId) { return API.get('/api/history/' + charId); };
+API.getActiveCombat = function(charId) { return API.get('/api/combat/active/' + charId); };

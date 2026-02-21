@@ -463,3 +463,218 @@ App.listItemForSale = async function() {
     await App.showMarket('market');
   } catch(e) { App.toast('Error: ' + e.message, 'error'); }
 };
+
+
+// ============ CHALLENGES / RETOS ============
+
+App._challengePollInterval = null;
+
+App.startChallengePoll = function() {
+  App.stopChallengePoll();
+  App.updateChallengeBadge();
+  App._challengePollInterval = setInterval(function() {
+    App.updateChallengeBadge();
+  }, 15000); // Poll every 15s
+};
+
+App.stopChallengePoll = function() {
+  if (App._challengePollInterval) {
+    clearInterval(App._challengePollInterval);
+    App._challengePollInterval = null;
+  }
+};
+
+App.updateChallengeBadge = async function() {
+  if (!App.currentCharacter) return;
+  try {
+    var result = await API.getChallengeCount(App.currentCharacter.id);
+    var badge = document.getElementById('notif-badge');
+    var bell = document.getElementById('notif-bell');
+    if (badge) {
+      if (result.count > 0) {
+        badge.textContent = result.count;
+        badge.style.display = 'flex';
+        if (bell) bell.classList.add('has-notif');
+      } else {
+        badge.style.display = 'none';
+        if (bell) bell.classList.remove('has-notif');
+      }
+    }
+  } catch(e) { /* silent */ }
+};
+
+App.showChallenges = async function() {
+  if (!App.currentCharacter) return;
+  try {
+    var challenges = await API.getChallenges(App.currentCharacter.id);
+    var modalHtml = Views.challengesModal(challenges, App.currentCharacter.id);
+    document.getElementById('app').insertAdjacentHTML('beforeend', modalHtml);
+  } catch(e) { App.toast('Error: ' + e.message, 'error'); }
+};
+
+App.closeChallenges = function() {
+  var modal = document.getElementById('challenges-modal');
+  if (modal) modal.remove();
+};
+
+App.showChallengeCreate = async function() {
+  if (!App.currentCharacter) return;
+  try {
+    var lb = await API.getLeaderboard();
+    var opponents = lb.filter(function(c) { return c.id !== App.currentCharacter.id; });
+    App.pushScreen('challenge-create');
+    App.setScreen(Views.challengeCreateScreen(opponents, App.currentCharacter));
+  } catch(e) { App.toast('Error: ' + e.message, 'error'); }
+};
+
+App.sendChallenge = async function(opponentId) {
+  if (!App.currentCharacter) return;
+  var betInput = document.getElementById('challenge-bet-amount');
+  var bet = betInput ? parseInt(betInput.value) || 0 : 0;
+  if (bet < 0) { App.toast('Apuesta inválida', 'error'); return; }
+  if (bet > (App.currentCharacter.gold || 0)) { App.toast('No tienes suficiente oro', 'error'); return; }
+  try {
+    await API.createChallenge(App.currentCharacter.id, opponentId, bet);
+    App.toast('🎲 ¡Reto enviado! Esperando respuesta...', 'success');
+    App.screenStack = ['select', 'hub'];
+    await App.showHub();
+  } catch(e) { App.toast('Error: ' + e.message, 'error'); }
+};
+
+App.acceptChallenge = async function(challengeId) {
+  if (!App.currentCharacter) return;
+  var betInput = document.getElementById('accept-bet-' + challengeId);
+  var myBet = betInput ? parseInt(betInput.value) || 0 : 0;
+  if (myBet < 0) { App.toast('Apuesta inválida', 'error'); return; }
+  if (myBet > (App.currentCharacter.gold || 0)) { App.toast('No tienes suficiente oro', 'error'); return; }
+  
+  App.closeChallenges();
+  App.toast('⚔️ ¡Preparando duelo!', 'info');
+  
+  try {
+    var result = await API.acceptChallenge(challengeId, myBet);
+    
+    // Play combat animation
+    var introEntry = result.log.find(function(e) { return e.type === 'intro'; });
+    if (introEntry) {
+      var f1 = {
+        name: introEntry.f1.name, level: introEntry.f1.level, hp_max: introEntry.f1.hp_max,
+        avatarImg: getAvatarUrl(result.challenger.player_slug || result.challenger.player_avatar || 'guerrero')
+      };
+      var f2 = {
+        name: introEntry.f2.name, level: introEntry.f2.level, hp_max: introEntry.f2.hp_max,
+        avatarImg: getAvatarUrl(result.challenged.player_slug || result.challenged.player_avatar || 'guerrero')
+      };
+      await App.playCombat(f1, f2, result.log, false);
+    }
+
+    // Update current character
+    if (result.challenger.id === App.currentCharacter.id) {
+      App.currentCharacter = result.challenger;
+    } else {
+      App.currentCharacter = result.challenged;
+    }
+
+    // Show challenge result
+    App.setScreen(Views.challengeResultScreen(result, App.currentCharacter.id));
+  } catch(e) { App.toast('Error: ' + e.message, 'error'); }
+};
+
+App.declineChallenge = async function(challengeId) {
+  try {
+    await API.declineChallenge(challengeId);
+    App.toast('Reto rechazado', 'info');
+    App.closeChallenges();
+    App.updateChallengeBadge();
+  } catch(e) { App.toast('Error: ' + e.message, 'error'); }
+};
+
+App.closeChallengeResult = async function() {
+  App.screenStack = ['select', 'hub'];
+  await App.showHub();
+};
+
+// Override showHub to start polling
+var _originalShowHub = App.showHub;
+App.showHub = async function() {
+  await _originalShowHub.call(App);
+  App.startChallengePoll();
+};
+
+// Override showPlayerSelect to stop polling
+var _originalShowPlayerSelect = App.showPlayerSelect;
+App.showPlayerSelect = async function() {
+  App.stopChallengePoll();
+  await _originalShowPlayerSelect.call(App);
+};
+
+
+// ============ COMBAT HISTORY ============
+App.showHistory = async function() {
+  if (!this.currentCharacter) return;
+  try {
+    this.pushScreen('history');
+    const history = await API.getCombatHistory(this.currentCharacter.id);
+    this.setScreen(Views.historyScreen(history, this.currentCharacter));
+  } catch(e) { this.toast('Error: ' + e.message, 'error'); }
+};
+
+// ============ ACTIVE COMBAT CHECK ============
+App._checkActiveCombat = async function() {
+  if (!this.currentCharacter) return false;
+  try {
+    const res = await API.getActiveCombat(this.currentCharacter.id);
+    if (res.active && res.data) {
+      this.toast('\u2694\uFE0F Ya tienes un combate en curso!', 'info');
+      const data = res.data;
+      if (data.log) {
+        const introEntry = data.log.find(e => e.type === 'intro');
+        if (introEntry) {
+          const f1 = {
+            name: introEntry.f1.name, level: introEntry.f1.level, hp_max: introEntry.f1.hp_max,
+            avatarImg: getAvatarUrl(this.currentPlayer.slug)
+          };
+          const npcAvatars = {campesino:'guerrero',bandido:'ninja',gladiador:'caballero',bestia:'berserker'};
+          const f2 = {
+            name: introEntry.f2.name, level: introEntry.f2.level, hp_max: introEntry.f2.hp_max,
+            avatarImg: getAvatarUrl(data.npc ? (npcAvatars[data.npc.difficulty] || 'guerrero') : 'guerrero')
+          };
+          const isPvE = !!data.npc;
+          await this.playCombat(f1, f2, data.log, isPvE);
+        }
+        if (data.npc) {
+          this.currentCharacter = data.character;
+          this._pendingChoices = data.pendingChoices;
+          this.showPveResult(data.result === 'win', data.xpGained, data.character, data.leveledUp, data.fightsToday, data.maxFights, data.npc.difficulty, data.goldGained);
+        } else {
+          this.currentCharacter = data.character;
+          this._pendingChoices = data.pendingChoices;
+          this.showResult(data.result === 'win', data.xpGained, data.character, data.leveledUp, data.goldGained, data.wager);
+        }
+      }
+      return true;
+    }
+  } catch(e) { /* ignore errors, proceed normally */ }
+  return false;
+};
+
+// Override matchmaking to check active combat first
+App._originalMatchmaking = App.matchmaking;
+App.matchmaking = async function() {
+  if (await this._checkActiveCombat()) return;
+  return this._originalMatchmaking.call(this);
+};
+
+// Override fightPVP to check active combat first
+App._originalFightPVP = App.fightPVP;
+App.fightPVP = async function(opponentId) {
+  if (await this._checkActiveCombat()) return;
+  return this._originalFightPVP.call(this, opponentId);
+};
+
+// Override fightPVE to check active combat first
+App._originalFightPVE = App.fightPVE;
+App.fightPVE = async function(difficulty) {
+  if (await this._checkActiveCombat()) return;
+  return this._originalFightPVE.call(this, difficulty);
+};
