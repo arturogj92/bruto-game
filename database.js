@@ -183,13 +183,21 @@ const createCharacter = (playerId, name) => {
   `).run(playerId, name);
 };
 
+const ALLOWED_CHARACTER_FIELDS = new Set([
+  'name', 'level', 'xp', 'xp_next', 'hp_max', 'hp_base', 'strength', 'defense', 'speed',
+  'gold', 'inventory', 'weapon', 'weapon2', 'weapon3', 'weapon4', 'armor', 'accessory',
+  'ability1', 'ability2', 'ability3', 'pending_choices', 'player_id', 'wins', 'losses'
+]);
+
 const updateCharacter = (id, data) => {
   const fields = [];
   const values = [];
   for (const [key, val] of Object.entries(data)) {
+    if (!ALLOWED_CHARACTER_FIELDS.has(key)) continue; // SQL injection guard
     fields.push(`${key} = ?`);
     values.push(val);
   }
+  if (fields.length === 0) return { changes: 0 };
   values.push(id);
   return db.prepare(`UPDATE characters SET ${fields.join(', ')} WHERE id = ?`).run(...values);
 };
@@ -215,13 +223,19 @@ const getActiveTournament = () => db.prepare("SELECT * FROM tournament WHERE sta
 const createTournament = (bracket) => {
   return db.prepare("INSERT INTO tournament (status, bracket) VALUES ('active', ?)").run(JSON.stringify(bracket));
 };
+const ALLOWED_TOURNAMENT_FIELDS = new Set([
+  'status', 'winner_id', 'current_round', 'total_rounds', 'prize_pool', 'started_at', 'ended_at'
+]);
+
 const updateTournament = (id, data) => {
   const fields = [];
   const values = [];
   for (const [key, val] of Object.entries(data)) {
+    if (!ALLOWED_TOURNAMENT_FIELDS.has(key)) continue;
     fields.push(`${key} = ?`);
     values.push(val);
   }
+  if (fields.length === 0) return { changes: 0 };
   values.push(id);
   return db.prepare(`UPDATE tournament SET ${fields.join(', ')} WHERE id = ?`).run(...values);
 };
@@ -240,13 +254,19 @@ const createTournamentMatch = (data) => {
   `).run(data.tournament_id, data.round, data.match_index, data.char1_id, data.char2_id);
 };
 
+const ALLOWED_MATCH_FIELDS = new Set([
+  'winner_id', 'loser_id', 'status', 'fight_log', 'played_at'
+]);
+
 const updateTournamentMatch = (id, data) => {
   const fields = [];
   const values = [];
   for (const [key, val] of Object.entries(data)) {
+    if (!ALLOWED_MATCH_FIELDS.has(key)) continue;
     fields.push(`${key} = ?`);
     values.push(val);
   }
+  if (fields.length === 0) return { changes: 0 };
   values.push(id);
   return db.prepare(`UPDATE tournament_matches SET ${fields.join(', ')} WHERE id = ?`).run(...values);
 };

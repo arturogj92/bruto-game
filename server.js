@@ -182,10 +182,14 @@ app.post('/api/fight/matchmaking', (req, res) => {
   
   let leveledUp = false;
   let levelUpData = null;
-  if (myUpdates.xp >= char.xp_next && char.level < 50) {
-    levelUpData = combat.levelUp(char);
+  // Multi-level-up: loop until no more XP threshold crossed
+  let tempCharState = { ...char };
+  while (myUpdates.xp >= tempCharState.xp_next && tempCharState.level < 50) {
+    levelUpData = combat.levelUp(tempCharState);
     Object.assign(myUpdates, levelUpData.changes);
-    myUpdates.xp = myUpdates.xp - char.xp_next;
+    myUpdates.xp = myUpdates.xp - tempCharState.xp_next;
+    Object.assign(tempCharState, levelUpData.changes);
+    tempCharState.xp = myUpdates.xp;
     leveledUp = true;
   }
 
@@ -197,10 +201,13 @@ app.post('/api/fight/matchmaking', (req, res) => {
     wins: !isWin ? opponent.wins + 1 : opponent.wins,
     losses: !isWin ? opponent.losses : opponent.losses + 1
   };
-  if (oppUpdates.xp >= opponent.xp_next && opponent.level < 50) {
-    const oppLvl = combat.levelUp(opponent);
+  let tempOppState = { ...opponent };
+  while (oppUpdates.xp >= tempOppState.xp_next && tempOppState.level < 50) {
+    const oppLvl = combat.levelUp(tempOppState);
     Object.assign(oppUpdates, oppLvl.changes);
-    oppUpdates.xp = oppUpdates.xp - opponent.xp_next;
+    oppUpdates.xp = oppUpdates.xp - tempOppState.xp_next;
+    Object.assign(tempOppState, oppLvl.changes);
+    tempOppState.xp = oppUpdates.xp;
   }
   db.updateCharacter(opponent.id, oppUpdates);
 
@@ -295,19 +302,25 @@ app.post('/api/fight/pvp', (req, res) => {
 
   const winnerUpdates = { xp: winner.xp + winnerXP, wins: winner.wins + 1, gold: (winner.gold || 0) + winnerGold };
   let winnerLeveledUp = false;
-  if (winnerUpdates.xp >= winner.xp_next && winner.level < 50) {
-    const lvlData = combat.levelUp(winner);
+  let tempWinnerState = { ...winner };
+  while (winnerUpdates.xp >= tempWinnerState.xp_next && tempWinnerState.level < 50) {
+    const lvlData = combat.levelUp(tempWinnerState);
     Object.assign(winnerUpdates, lvlData.changes);
-    winnerUpdates.xp = winnerUpdates.xp - winner.xp_next;
+    winnerUpdates.xp = winnerUpdates.xp - tempWinnerState.xp_next;
+    Object.assign(tempWinnerState, lvlData.changes);
+    tempWinnerState.xp = winnerUpdates.xp;
     winnerLeveledUp = true;
   }
   db.updateCharacter(winner.id, winnerUpdates);
 
   const loserUpdates = { xp: loser.xp + loserXP, losses: loser.losses + 1, gold: (loser.gold || 0) + loserGold };
-  if (loserUpdates.xp >= loser.xp_next && loser.level < 50) {
-    const lvlData = combat.levelUp(loser);
+  let tempLoserState = { ...loser };
+  while (loserUpdates.xp >= tempLoserState.xp_next && tempLoserState.level < 50) {
+    const lvlData = combat.levelUp(tempLoserState);
     Object.assign(loserUpdates, lvlData.changes);
-    loserUpdates.xp = loserUpdates.xp - loser.xp_next;
+    loserUpdates.xp = loserUpdates.xp - tempLoserState.xp_next;
+    Object.assign(tempLoserState, lvlData.changes);
+    tempLoserState.xp = loserUpdates.xp;
   }
   db.updateCharacter(loser.id, loserUpdates);
 
@@ -737,10 +750,13 @@ app.post('/api/fight/pve', (req, res) => {
   const updates = { xp: char.xp + xpGained, gold: (char.gold || 0) + goldGained };
   let leveledUp = false;
   let levelUpData = null;
-  if (updates.xp >= char.xp_next && char.level < 50 && xpGained > 0) {
-    levelUpData = combat.levelUp(char);
+  let tempPvEState = { ...char };
+  while (updates.xp >= tempPvEState.xp_next && tempPvEState.level < 50 && xpGained > 0) {
+    levelUpData = combat.levelUp(tempPvEState);
     Object.assign(updates, levelUpData.changes);
-    updates.xp = updates.xp - char.xp_next;
+    updates.xp = updates.xp - tempPvEState.xp_next;
+    Object.assign(tempPvEState, levelUpData.changes);
+    tempPvEState.xp = updates.xp;
     leveledUp = true;
   }
   db.updateCharacter(char.id, updates);

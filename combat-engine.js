@@ -532,7 +532,8 @@ function simulateCombat(fighter1, fighter2) {
     const f1pct = f1.hp / f1.hp_max;
     const f2pct = f2.hp / f2.hp_max;
     if (f1pct < f2pct) f1.hp = 0;
-    else f2.hp = 0;
+    else if (f2pct < f1pct) f2.hp = 0;
+    else Math.random() < 0.5 ? f1.hp = 0 : f2.hp = 0; // coin flip on exact tie
   }
 
   const winner = f1.hp > 0 ? f1 : f2;
