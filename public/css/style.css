@@ -1844,3 +1844,463 @@ body {
   min-width: 70px;
   text-align: right;
 }
+
+/* =============================================
+   MASHING RÁPIDO - Overlay Styles
+   ============================================= */
+
+.mashing-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.88);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+.mashing-overlay.mashing-visible {
+  opacity: 1;
+}
+
+.mashing-content {
+  text-align: center;
+  width: 90%;
+  max-width: 400px;
+}
+
+.mashing-icon {
+  font-size: 72px;
+  animation: mashingIconPulse 0.3s ease infinite alternate;
+  filter: drop-shadow(0 0 20px rgba(255, 220, 0, 0.8));
+}
+
+@keyframes mashingIconPulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.15); }
+}
+
+.mashing-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: #ffdd00;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  margin: 10px 0;
+  text-shadow: 0 0 20px rgba(255, 220, 0, 0.6), 0 0 40px rgba(255, 220, 0, 0.3);
+  animation: mashingTitleGlow 0.5s ease infinite alternate;
+}
+
+@keyframes mashingTitleGlow {
+  from { text-shadow: 0 0 20px rgba(255, 220, 0, 0.6); }
+  to { text-shadow: 0 0 30px rgba(255, 220, 0, 1), 0 0 60px rgba(255, 150, 0, 0.5); }
+}
+
+.mashing-counter {
+  font-size: 80px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 30px rgba(255, 100, 0, 0.8);
+  transition: transform 0.08s ease;
+  line-height: 1;
+  margin: 15px 0;
+}
+
+.mashing-counter.mashing-bump {
+  animation: mashingBump 0.12s ease;
+}
+
+@keyframes mashingBump {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); color: #ff6600; }
+  100% { transform: scale(1); }
+}
+
+.mashing-timer-bar {
+  width: 80%;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 7px;
+  margin: 20px auto 15px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.mashing-timer-fill {
+  height: 100%;
+  width: 100%;
+  background: #44ff44;
+  border-radius: 7px;
+  transition: width 0.05s linear;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.mashing-hint {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 2px;
+  animation: mashingHintBlink 0.6s ease infinite alternate;
+}
+
+@keyframes mashingHintBlink {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
+}
+
+.mashing-result-hit {
+  animation: mashingResultAppear 0.3s ease;
+}
+
+.mashing-result-miss {
+  animation: mashingResultAppear 0.3s ease;
+}
+
+.mashing-result-text {
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffdd00;
+  text-shadow: 0 0 20px rgba(255, 220, 0, 0.5);
+  margin-bottom: 10px;
+}
+
+.mashing-result-miss .mashing-result-text {
+  color: #ff6666;
+  text-shadow: 0 0 20px rgba(255, 100, 100, 0.5);
+}
+
+.mashing-result-bonus {
+  font-size: 36px;
+  font-weight: 900;
+  color: #ff6600;
+  text-shadow: 0 0 30px rgba(255, 100, 0, 0.8);
+  animation: mashingBonusPulse 0.3s ease infinite alternate;
+}
+
+@keyframes mashingBonusPulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.1); }
+}
+
+@keyframes mashingResultAppear {
+  from { transform: scale(0.5); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.mashing-shake {
+  animation: mashingShake 0.4s ease !important;
+}
+
+@keyframes mashingShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+
+
+/* =============================================
+   DECISIÓN TÁCTICA - Overlay Styles
+   ============================================= */
+
+.tactical-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tactical-overlay.tactical-visible {
+  opacity: 1;
+}
+
+.tactical-content {
+  text-align: center;
+  width: 94%;
+  max-width: 500px;
+}
+
+.tactical-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: #ffdd00;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+  text-shadow: 0 0 20px rgba(255, 220, 0, 0.6);
+  animation: tacticalTitlePulse 0.6s ease infinite alternate;
+}
+
+@keyframes tacticalTitlePulse {
+  from { text-shadow: 0 0 20px rgba(255, 220, 0, 0.4); }
+  to { text-shadow: 0 0 30px rgba(255, 220, 0, 0.9), 0 0 50px rgba(255, 150, 0, 0.4); }
+}
+
+.tactical-subtitle {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 22px;
+}
+
+.tactical-cards {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.tactical-card {
+  flex: 1;
+  max-width: 200px;
+  padding: 22px 16px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.tactical-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.tactical-card-heal {
+  background: rgba(68, 255, 102, 0.1);
+  border-color: rgba(68, 255, 102, 0.3);
+}
+
+.tactical-card-heal::before {
+  background: radial-gradient(circle, rgba(68, 255, 102, 0.2) 0%, transparent 70%);
+}
+
+.tactical-card-heal:hover, .tactical-card-heal:active {
+  border-color: #44ff66;
+  transform: scale(1.06);
+  box-shadow: 0 0 30px rgba(68, 255, 102, 0.4), 0 0 60px rgba(68, 255, 102, 0.2);
+}
+
+.tactical-card-heal:hover::before, .tactical-card-heal:active::before {
+  opacity: 1;
+}
+
+.tactical-card-damage {
+  background: rgba(255, 100, 50, 0.1);
+  border-color: rgba(255, 100, 50, 0.3);
+}
+
+.tactical-card-damage::before {
+  background: radial-gradient(circle, rgba(255, 100, 50, 0.2) 0%, transparent 70%);
+}
+
+.tactical-card-damage:hover, .tactical-card-damage:active {
+  border-color: #ff6632;
+  transform: scale(1.06);
+  box-shadow: 0 0 30px rgba(255, 100, 50, 0.4), 0 0 60px rgba(255, 100, 50, 0.2);
+}
+
+.tactical-card-damage:hover::before, .tactical-card-damage:active::before {
+  opacity: 1;
+}
+
+.tactical-card-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+}
+
+.tactical-card-label {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.tactical-card-desc {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+}
+
+.tactical-timer-bar {
+  width: 80%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  margin: 0 auto 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.tactical-timer-fill {
+  height: 100%;
+  width: 100%;
+  background: #44ff44;
+  border-radius: 5px;
+  transition: width 0.05s linear;
+}
+
+.tactical-hint {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 2px;
+  animation: tacticalHintBlink 0.7s ease infinite alternate;
+}
+
+@keyframes tacticalHintBlink {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
+}
+
+.tactical-result {
+  animation: tacticalResultAppear 0.3s ease;
+}
+
+.tactical-result-icon {
+  font-size: 64px;
+  margin-bottom: 10px;
+  filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.5));
+}
+
+.tactical-result-text {
+  font-size: 26px;
+  font-weight: 900;
+  margin-bottom: 6px;
+}
+
+.tactical-result-heal .tactical-result-text {
+  color: #44ff66;
+  text-shadow: 0 0 20px rgba(68, 255, 102, 0.6);
+}
+
+.tactical-result-damage .tactical-result-text {
+  color: #ff6632;
+  text-shadow: 0 0 20px rgba(255, 100, 50, 0.6);
+}
+
+.tactical-result-detail {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+@keyframes tacticalResultAppear {
+  from { transform: scale(0.5); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.tactical-shake {
+  animation: tacticalShake 0.3s ease;
+}
+
+@keyframes tacticalShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  50% { transform: translateX(6px); }
+  75% { transform: translateX(-3px); }
+}
+
+
+/* =============================================
+   COMBAT PARTICLE EFFECTS
+   ============================================= */
+
+.heal-particle {
+  position: absolute;
+  font-size: 22px;
+  bottom: 20%;
+  animation: healFloat 1s ease-out forwards;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes healFloat {
+  0% { transform: translateY(0) scale(0.5); opacity: 0; }
+  20% { opacity: 1; transform: translateY(-10px) scale(1); }
+  100% { transform: translateY(-60px) scale(0.3); opacity: 0; }
+}
+
+.buff-particle {
+  position: absolute;
+  font-size: 20px;
+  bottom: 30%;
+  animation: buffFloat 1s ease-out forwards;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes buffFloat {
+  0% { transform: translateY(0) rotate(0deg) scale(0.5); opacity: 0; }
+  30% { opacity: 1; transform: translateY(-15px) rotate(15deg) scale(1.1); }
+  100% { transform: translateY(-50px) rotate(30deg) scale(0.2); opacity: 0; }
+}
+
+.buff-glow {
+  animation: buffGlowPulse 0.8s ease infinite alternate !important;
+  filter: drop-shadow(0 0 12px rgba(255, 100, 50, 0.7)) !important;
+}
+
+@keyframes buffGlowPulse {
+  from { filter: drop-shadow(0 0 8px rgba(255, 100, 50, 0.5)); }
+  to { filter: drop-shadow(0 0 18px rgba(255, 100, 50, 0.9)); }
+}
+
+.damage-number.boosted {
+  color: #ff6632 !important;
+  font-size: 28px !important;
+  text-shadow: 0 0 15px rgba(255, 100, 50, 0.8) !important;
+}
+
+.boosted-tag {
+  font-size: 16px;
+  vertical-align: super;
+}
+
+
+/* =============================================
+   MOBILE RESPONSIVE - Mini-games
+   ============================================= */
+
+@media (max-width: 600px) {
+  .mashing-icon { font-size: 56px; }
+  .mashing-title { font-size: 22px; }
+  .mashing-counter { font-size: 64px; }
+  .mashing-timer-bar { width: 90%; height: 12px; }
+  .mashing-result-text { font-size: 22px; }
+  .mashing-result-bonus { font-size: 28px; }
+
+  .tactical-title { font-size: 22px; }
+  .tactical-cards { gap: 10px; }
+  .tactical-card { padding: 18px 12px; }
+  .tactical-card-icon { font-size: 40px; }
+  .tactical-card-label { font-size: 17px; }
+  .tactical-card-desc { font-size: 12px; }
+  .tactical-timer-bar { width: 90%; }
+  .tactical-result-icon { font-size: 48px; }
+  .tactical-result-text { font-size: 22px; }
+}
+
+@media (max-width: 380px) {
+  .mashing-icon { font-size: 48px; }
+  .mashing-counter { font-size: 52px; }
+  .tactical-card-icon { font-size: 32px; }
+  .tactical-card { padding: 14px 10px; }
+}

@@ -1,5 +1,6 @@
 // Combat Animation System v2 - Visual real-time combat (PvP + PvE)
 // QTE (Quick Time Event) System integrated
+// Mashing Rápido + Decisión Táctica mini-games
 
 class QTESystem {
   constructor() {
@@ -191,6 +192,324 @@ class QTESystem {
   }
 }
 
+// =============================================
+// MASHING RÁPIDO SYSTEM (15% chance per combat)
+// =============================================
+class MashingSystem {
+  constructor() {
+    this.overlay = null;
+    this.tapCount = 0;
+    this.active = false;
+    this.duration = 3000; // 3 seconds
+    this.audioCtx = null;
+  }
+
+  _beep(freq, dur, type) {
+    try {
+      if (!this.audioCtx) this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var osc = this.audioCtx.createOscillator();
+      var gain = this.audioCtx.createGain();
+      osc.connect(gain); gain.connect(this.audioCtx.destination);
+      osc.type = type || "square"; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.1, this.audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + dur);
+      osc.start(); osc.stop(this.audioCtx.currentTime + dur);
+    } catch(e) {}
+  }
+
+  show() {
+    var self = this;
+    return new Promise(function(resolve) {
+      self.tapCount = 0;
+      self.active = true;
+
+      self.overlay = document.createElement("div");
+      self.overlay.className = "mashing-overlay";
+      self.overlay.innerHTML =
+        '<div class="mashing-content">' +
+          '<div class="mashing-icon">⚡</div>' +
+          '<div class="mashing-title">¡PULSA RÁPIDO!</div>' +
+          '<div class="mashing-counter" id="mashing-count">0</div>' +
+          '<div class="mashing-timer-bar"><div class="mashing-timer-fill" id="mashing-timer"></div></div>' +
+          '<div class="mashing-hint">CLICK / SPACE / TAP</div>' +
+        '</div>';
+
+      document.body.appendChild(self.overlay);
+      self.overlay.offsetHeight;
+      self.overlay.classList.add("mashing-visible");
+
+      self._beep(660, 0.15, "square");
+
+      var counterEl = document.getElementById("mashing-count");
+      var timerEl = document.getElementById("mashing-timer");
+      var startTime = performance.now();
+
+      // Tap handler
+      function onTap(e) {
+        if (!self.active) return;
+        if (e.type === "keydown" && e.code !== "Space") return;
+        if (e.type === "keydown") e.preventDefault();
+        self.tapCount++;
+        if (counterEl) {
+          counterEl.textContent = self.tapCount;
+          counterEl.classList.remove("mashing-bump");
+          void counterEl.offsetWidth;
+          counterEl.classList.add("mashing-bump");
+        }
+        // Tick sound
+        self._beep(440 + self.tapCount * 15, 0.05, "square");
+      }
+
+      self._onKey = onTap;
+      self._onClick = onTap;
+      document.addEventListener("keydown", self._onKey);
+      self.overlay.addEventListener("touchstart", self._onClick, { passive: true });
+      self.overlay.addEventListener("click", self._onClick);
+
+      // Timer animation
+      function animTimer(now) {
+        if (!self.active) return;
+        var elapsed = now - startTime;
+        var remaining = Math.max(0, 1 - elapsed / self.duration);
+        if (timerEl) {
+          timerEl.style.width = (remaining * 100) + "%";
+          // Color gradient: green -> yellow -> red
+          var r = Math.min(255, Math.floor((1 - remaining) * 2 * 255));
+          var g = Math.min(255, Math.floor(remaining * 2 * 255));
+          timerEl.style.background = "rgb(" + r + "," + g + ",0)";
+        }
+        if (elapsed >= self.duration) {
+          self._finish(resolve);
+          return;
+        }
+        requestAnimationFrame(animTimer);
+      }
+      requestAnimationFrame(animTimer);
+    });
+  }
+
+  _finish(resolve) {
+    if (!this.active) return;
+    this.active = false;
+    document.removeEventListener("keydown", this._onKey);
+
+    var taps = this.tapCount;
+    var bonusPercent = 0;
+    if (taps >= 26) bonusPercent = 50;
+    else if (taps >= 16) bonusPercent = 25;
+    else if (taps >= 6) bonusPercent = 10;
+
+    var multiplier = 1 + bonusPercent / 100;
+
+    // Show result
+    var resultText = "";
+    var resultClass = "";
+    if (bonusPercent === 0) {
+      resultText = "😤 ¡" + taps + " taps! Sin bonus...";
+      resultClass = "mashing-result-miss";
+    } else {
+      resultText = "💪 ¡" + taps + " taps! +" + bonusPercent + "% daño extra!";
+      resultClass = "mashing-result-hit";
+      this._beep(880, 0.15, "square");
+      setTimeout(function() {
+        try {
+          var ctx = new (window.AudioContext || window.webkitAudioContext)();
+          var o = ctx.createOscillator(); var g = ctx.createGain();
+          o.connect(g); g.connect(ctx.destination);
+          o.type = "square"; o.frequency.value = 1100;
+          g.gain.setValueAtTime(0.12, ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+          o.start(); o.stop(ctx.currentTime + 0.15);
+        } catch(e) {}
+      }, 100);
+    }
+
+    var self = this;
+    this.overlay.innerHTML =
+      '<div class="mashing-content">' +
+        '<div class="' + resultClass + '">' +
+          '<div class="mashing-result-text">' + resultText + '</div>' +
+          (bonusPercent > 0 ? '<div class="mashing-result-bonus">NEXT HIT: x' + multiplier.toFixed(1) + '</div>' : '') +
+        '</div>' +
+      '</div>';
+
+    if (bonusPercent >= 25) {
+      this.overlay.classList.add("mashing-shake");
+    }
+
+    setTimeout(function() {
+      self.overlay.classList.remove("mashing-visible");
+      setTimeout(function() {
+        if (self.overlay && self.overlay.parentNode) self.overlay.parentNode.removeChild(self.overlay);
+        self.overlay = null;
+        resolve({ taps: taps, bonusPercent: bonusPercent, multiplier: multiplier });
+      }, 400);
+    }, 1400);
+  }
+
+  cleanup() {
+    this.active = false;
+    if (this._onKey) document.removeEventListener("keydown", this._onKey);
+    if (this.overlay && this.overlay.parentNode) this.overlay.parentNode.removeChild(this.overlay);
+    this.overlay = null;
+  }
+}
+
+// =============================================
+// DECISIÓN TÁCTICA SYSTEM (15% chance per combat)
+// =============================================
+class TacticalDecisionSystem {
+  constructor() {
+    this.overlay = null;
+    this.resolved = false;
+    this.duration = 5000; // 5 seconds
+    this.audioCtx = null;
+  }
+
+  _beep(freq, dur, type) {
+    try {
+      if (!this.audioCtx) this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var osc = this.audioCtx.createOscillator();
+      var gain = this.audioCtx.createGain();
+      osc.connect(gain); gain.connect(this.audioCtx.destination);
+      osc.type = type || "square"; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.1, this.audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + dur);
+      osc.start(); osc.stop(this.audioCtx.currentTime + dur);
+    } catch(e) {}
+  }
+
+  show(fighterName) {
+    var self = this;
+    return new Promise(function(resolve) {
+      self.resolved = false;
+
+      self.overlay = document.createElement("div");
+      self.overlay.className = "tactical-overlay";
+      self.overlay.innerHTML =
+        '<div class="tactical-content">' +
+          '<div class="tactical-title">⚡ ¡DECISIÓN TÁCTICA!</div>' +
+          '<div class="tactical-subtitle">' + fighterName + ' necesita tu ayuda</div>' +
+          '<div class="tactical-cards">' +
+            '<div class="tactical-card tactical-card-heal" id="tc-heal">' +
+              '<div class="tactical-card-icon">💚</div>' +
+              '<div class="tactical-card-label">Curar</div>' +
+              '<div class="tactical-card-desc">+30% HP</div>' +
+            '</div>' +
+            '<div class="tactical-card tactical-card-damage" id="tc-damage">' +
+              '<div class="tactical-card-icon">⚔️</div>' +
+              '<div class="tactical-card-label">Daño</div>' +
+              '<div class="tactical-card-desc">+50% (3 turnos)</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="tactical-timer-bar"><div class="tactical-timer-fill" id="tactical-timer"></div></div>' +
+          '<div class="tactical-hint">¡ELIGE RÁPIDO!</div>' +
+        '</div>';
+
+      document.body.appendChild(self.overlay);
+      self.overlay.offsetHeight;
+      self.overlay.classList.add("tactical-visible");
+
+      self._beep(550, 0.2, "triangle");
+
+      var timerEl = document.getElementById("tactical-timer");
+      var startTime = performance.now();
+
+      // Card click handlers
+      var healCard = document.getElementById("tc-heal");
+      var dmgCard = document.getElementById("tc-damage");
+
+      function chooseHeal(e) {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        if (self.resolved) return;
+        self._choose("heal", resolve);
+      }
+      function chooseDamage(e) {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        if (self.resolved) return;
+        self._choose("damage", resolve);
+      }
+
+      healCard.addEventListener("click", chooseHeal);
+      healCard.addEventListener("touchstart", chooseHeal, { passive: false });
+      dmgCard.addEventListener("click", chooseDamage);
+      dmgCard.addEventListener("touchstart", chooseDamage, { passive: false });
+
+      // Keyboard shortcuts: 1 for heal, 2 for damage
+      function onKey(e) {
+        if (self.resolved) return;
+        if (e.key === "1" || e.key === "a" || e.key === "A") { e.preventDefault(); self._choose("heal", resolve); }
+        if (e.key === "2" || e.key === "d" || e.key === "D") { e.preventDefault(); self._choose("damage", resolve); }
+      }
+      self._onKey = onKey;
+      document.addEventListener("keydown", self._onKey);
+
+      // Timer
+      function animTimer(now) {
+        if (self.resolved) return;
+        var elapsed = now - startTime;
+        var remaining = Math.max(0, 1 - elapsed / self.duration);
+        if (timerEl) {
+          timerEl.style.width = (remaining * 100) + "%";
+          var r = Math.min(255, Math.floor((1 - remaining) * 2 * 255));
+          var g = Math.min(255, Math.floor(remaining * 2 * 255));
+          timerEl.style.background = "rgb(" + r + "," + g + ",0)";
+        }
+        if (elapsed >= self.duration) {
+          // Time's up - random choice
+          var randomChoice = Math.random() < 0.5 ? "heal" : "damage";
+          self._choose(randomChoice, resolve);
+          return;
+        }
+        requestAnimationFrame(animTimer);
+      }
+      requestAnimationFrame(animTimer);
+    });
+  }
+
+  _choose(choice, resolve) {
+    if (this.resolved) return;
+    this.resolved = true;
+    if (this._onKey) document.removeEventListener("keydown", this._onKey);
+
+    this._beep(choice === "heal" ? 520 : 780, 0.15, "square");
+
+    var self = this;
+    var resultEmoji = choice === "heal" ? "💚" : "⚔️";
+    var resultText = choice === "heal" ? "¡CURACIÓN ACTIVADA!" : "¡DAÑO AUMENTADO!";
+    var resultDetail = choice === "heal" ? "+30% HP restaurado" : "+50% daño por 3 turnos";
+
+    this.overlay.innerHTML =
+      '<div class="tactical-content">' +
+        '<div class="tactical-result ' + (choice === "heal" ? "tactical-result-heal" : "tactical-result-damage") + '">' +
+          '<div class="tactical-result-icon">' + resultEmoji + '</div>' +
+          '<div class="tactical-result-text">' + resultText + '</div>' +
+          '<div class="tactical-result-detail">' + resultDetail + '</div>' +
+        '</div>' +
+      '</div>';
+
+    if (choice === "damage") {
+      this.overlay.classList.add("tactical-shake");
+    }
+
+    setTimeout(function() {
+      self.overlay.classList.remove("tactical-visible");
+      setTimeout(function() {
+        if (self.overlay && self.overlay.parentNode) self.overlay.parentNode.removeChild(self.overlay);
+        self.overlay = null;
+        resolve({ choice: choice });
+      }, 400);
+    }, 1200);
+  }
+
+  cleanup() {
+    this.resolved = true;
+    if (this._onKey) document.removeEventListener("keydown", this._onKey);
+    if (this.overlay && this.overlay.parentNode) this.overlay.parentNode.removeChild(this.overlay);
+    this.overlay = null;
+  }
+}
+
 class CombatAnimator {
   constructor(container, fighter1Data, fighter2Data, isPvE) {
     this.container = container;
@@ -201,6 +520,24 @@ class CombatAnimator {
     this.qte = new QTESystem();
     this.qteIndices = [];
     this.qteFired = 0;
+
+    // Mini-game systems
+    this.mashing = new MashingSystem();
+    this.tactical = new TacticalDecisionSystem();
+
+    // Mini-game state: decide at construction time whether they trigger
+    this.mashingEnabled = Math.random() < 0.15;
+    this.tacticalEnabled = Math.random() < 0.15;
+
+    // Mashing: pick a random turn between 3-8 to trigger
+    this.mashingTriggerTurn = 3 + Math.floor(Math.random() * 6); // turns 3-8
+    this.mashingFired = false;
+    this.mashingBonus = 1.0; // multiplier for next attack
+
+    // Tactical: track if triggered
+    this.tacticalFired = false;
+    this.tacticalChoice = null; // "heal" or "damage"
+    this.tacticalDamageBoostTurns = 0; // remaining boosted turns
   }
 
   render() {
@@ -262,16 +599,123 @@ class CombatAnimator {
     this.qteIndices = this._pickQTETurns(log);
     this.qteFired = 0;
 
+    // Track turn count for mashing trigger
+    var turnCount = 0;
+    // Track HP for tactical trigger
+    var tacticalCheckDone = false;
+
     return new Promise(async function(resolve) {
       self.resolve = resolve;
       var turnDelay = Math.max(200, Math.min(800, 7000 / Math.max(log.length, 1)));
       
       for (var i = 0; i < log.length; i++) {
-        await self.processEntry(log[i], turnDelay, i);
+        var entry = log[i];
+
+        // Count turns (attacks count as turns)
+        if (entry.type === "attack" || entry.type === "dodge") {
+          turnCount++;
+        }
+
+        // === MASHING RÁPIDO CHECK ===
+        if (self.mashingEnabled && !self.mashingFired && turnCount === self.mashingTriggerTurn && entry.type === "attack") {
+          self.mashingFired = true;
+          var mashResult = await self.mashing.show();
+          self.mashingBonus = mashResult.multiplier;
+          if (mashResult.bonusPercent > 0) {
+            self.addLog("⚡ ¡Mashing Rápido! +" + mashResult.bonusPercent + "% daño en el próximo golpe!", "ability");
+          }
+        }
+
+        // === TACTICAL DECISION CHECK ===
+        // Trigger when any fighter drops below 60% HP for the first time
+        if (self.tacticalEnabled && !self.tacticalFired && !tacticalCheckDone) {
+          if (entry.type === "status" || entry.defenderHp !== undefined || (entry.f1 && entry.f2)) {
+            var f1hp = 999, f1max = 999, f2hp = 999, f2max = 999;
+            if (entry.f1 && entry.f2) {
+              f1hp = entry.f1.hp; f1max = entry.f1.hp_max;
+              f2hp = entry.f2.hp; f2max = entry.f2.hp_max;
+            } else if (entry.defenderHp !== undefined) {
+              // Partial info - check the defender
+              var defIsF1 = (entry.defender === self.f1.name || entry.target === self.f1.name);
+              if (defIsF1) { f1hp = entry.defenderHp; f1max = entry.defenderHpMax || self.f1.hp_max; }
+              else { f2hp = entry.defenderHp; f2max = entry.defenderHpMax || self.f2.hp_max; }
+            }
+
+            var f1Ratio = f1max > 0 ? f1hp / f1max : 1;
+            var f2Ratio = f2max > 0 ? f2hp / f2max : 1;
+
+            if (f1Ratio < 0.6 || f2Ratio < 0.6) {
+              self.tacticalFired = true;
+              tacticalCheckDone = true;
+              var tacResult = await self.tactical.show(self.f1.name);
+              self.tacticalChoice = tacResult.choice;
+
+              if (tacResult.choice === "heal") {
+                // Visual heal: add 30% HP to f1 display
+                var healAmount = Math.floor(self.f1.hp_max * 0.3);
+                self.addLog("💚 ¡" + self.f1.name + " se cura " + healAmount + " HP!", "heal");
+                self.showDamageNumber("left", "+" + healAmount, true);
+                // Show heal particles
+                self._showHealEffect("left");
+              } else {
+                // Damage boost for 3 turns
+                self.tacticalDamageBoostTurns = 3;
+                self.addLog("⚔️ ¡" + self.f1.name + " activa modo FURIA! +50% daño por 3 turnos!", "critical");
+                self._showBuffEffect("left");
+              }
+            }
+          }
+        }
+
+        await self.processEntry(entry, turnDelay, i);
       }
       await self.wait(1200);
       resolve();
     });
+  }
+
+  _showHealEffect(side) {
+    var panel = document.getElementById("fp-" + side);
+    if (!panel) return;
+    for (var i = 0; i < 6; i++) {
+      (function(idx) {
+        setTimeout(function() {
+          var particle = document.createElement("div");
+          particle.className = "heal-particle";
+          particle.textContent = "💚";
+          particle.style.left = (20 + Math.random() * 60) + "%";
+          particle.style.animationDelay = (idx * 0.1) + "s";
+          panel.style.position = "relative";
+          panel.appendChild(particle);
+          setTimeout(function() { particle.remove(); }, 1200);
+        }, idx * 100);
+      })(i);
+    }
+  }
+
+  _showBuffEffect(side) {
+    var panel = document.getElementById("fp-" + side);
+    if (!panel) return;
+    for (var i = 0; i < 4; i++) {
+      (function(idx) {
+        setTimeout(function() {
+          var particle = document.createElement("div");
+          particle.className = "buff-particle";
+          particle.textContent = "⚔️";
+          particle.style.left = (20 + Math.random() * 60) + "%";
+          particle.style.animationDelay = (idx * 0.15) + "s";
+          panel.style.position = "relative";
+          panel.appendChild(particle);
+          setTimeout(function() { particle.remove(); }, 1200);
+        }, idx * 120);
+      })(i);
+    }
+    // Add glow to avatar
+    var avatar = document.getElementById("avatar-" + side);
+    if (avatar) {
+      avatar.classList.add("buff-glow");
+      setTimeout(function() { avatar.classList.remove("buff-glow"); }, 6000);
+    }
   }
 
   async processEntry(entry, baseDelay, turnIndex) {
@@ -367,6 +811,20 @@ class CombatAnimator {
       displayDamage = entry.damage * 2;
     }
 
+    // === MASHING BONUS APPLICATION ===
+    if (isF1 && this.mashingBonus > 1.0) {
+      displayDamage = Math.floor(displayDamage * this.mashingBonus);
+      isCriticalDisplay = true;
+      this.mashingBonus = 1.0; // reset after one use
+    }
+
+    // === TACTICAL DAMAGE BOOST APPLICATION ===
+    if (isF1 && this.tacticalDamageBoostTurns > 0) {
+      displayDamage = Math.floor(displayDamage * 1.5);
+      isCriticalDisplay = true;
+      this.tacticalDamageBoostTurns--;
+    }
+
     if (attackerEl) {
       attackerEl.classList.add(isF1 ? "attack-anim-left" : "attack-anim-right");
       setTimeout(function() { attackerEl.classList.remove("attack-anim-left", "attack-anim-right"); }, 400);
@@ -387,7 +845,9 @@ class CombatAnimator {
       }
     }
 
-    this.showDamageNumber(defSide, "-" + displayDamage, false, isCriticalDisplay);
+    // Show boosted tag if tactical damage boost active
+    var isBoosted = isF1 && this.tacticalChoice === "damage" && this.tacticalDamageBoostTurns >= 0 && this.tacticalDamageBoostTurns < 3;
+    this.showDamageNumber(defSide, "-" + displayDamage, false, isCriticalDisplay, isBoosted);
     this.updateHPSingle(defSide, entry.defenderHp, entry.defenderHpMax);
     
     var aSide = isF1 ? "left" : "right";
@@ -400,6 +860,8 @@ class CombatAnimator {
     var logText = entry.text;
     if (qteCritical) {
       logText = "💥 ¡GOLPE CRÍTICO! " + entry.attacker + " hace " + displayDamage + " de daño a " + (entry.defender || "el rival") + "!";
+    } else if (isF1 && isBoosted) {
+      logText = "⚔️ BOOSTED! " + entry.attacker + " hace " + displayDamage + " de daño a " + (entry.defender || "el rival") + "!";
     }
     this.addLog(logText, logClass);
   }
@@ -416,12 +878,18 @@ class CombatAnimator {
     if (el) { el.classList.add("hit-flash"); setTimeout(function() { el.classList.remove("hit-flash"); }, 200); }
   }
 
-  showDamageNumber(side, text, isHeal, isCritical) {
+  showDamageNumber(side, text, isHeal, isCritical, isBoosted) {
     var panel = document.getElementById("fp-" + side);
     if (!panel) return;
     var dmgEl = document.createElement("div");
-    dmgEl.className = "damage-number " + (isHeal ? "heal" : "") + " " + (isCritical ? "critical" : "");
+    dmgEl.className = "damage-number " + (isHeal ? "heal" : "") + " " + (isCritical ? "critical" : "") + " " + (isBoosted ? "boosted" : "");
     dmgEl.textContent = text;
+    if (isBoosted) {
+      var tag = document.createElement("span");
+      tag.className = "boosted-tag";
+      tag.textContent = " ⚔️";
+      dmgEl.appendChild(tag);
+    }
     dmgEl.style.left = (30 + Math.random() * 40) + "%";
     dmgEl.style.top = "20px";
     panel.style.position = "relative";

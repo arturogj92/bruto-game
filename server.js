@@ -224,9 +224,28 @@ app.post('/api/fight/matchmaking', (req, res) => {
   const updatedOpp = db.getCharacterById(opponent.id);
   const oppPlayer = db.getPlayerById(opponent.player_id);
 
+  // Chest roll (10% on win)
+  let chest = null;
+  if (isWin && Math.random() < 0.10) {
+    chest = generateChest();
+    let chestGold = 0;
+    const chestItems = [];
+    for (const item of chest.items) {
+      if (item.type === 'gold') chestGold += item.amount;
+      else chestItems.push({ type: item.type, id: item.id });
+    }
+    if (chestGold > 0 || chestItems.length > 0) {
+      const inv = JSON.parse(updatedChar.inventory || '[]');
+      inv.push(...chestItems);
+      db.updateCharacter(char.id, { inventory: JSON.stringify(inv), gold: (updatedChar.gold || 0) + chestGold });
+      updatedChar = db.getCharacterById(char.id);
+    }
+  }
+
   const matchmakingResponse = {
     result: isWin ? 'win' : 'lose',
     log: result.log,
+    chest,
     xpGained: myXP,
     goldGained: myGold,
     leveledUp,
@@ -318,7 +337,7 @@ app.post('/api/fight/pvp', (req, res) => {
 app.post('/api/character/:id/choose', (req, res) => {
   const char = db.getCharacterById(parseInt(req.params.id));
   if (!char) return res.status(404).json({ error: 'Character not found' });
-  if (!char.pending_choices) return res.status(400).json({ error: 'No hay elección pendiente' });
+  if (!char.pending_choices) return res.json({ success: true, character: char, chosen: null, message: 'Ya elegido' });
 
   const choices = JSON.parse(char.pending_choices);
   const { choiceIndex } = req.body;
@@ -522,11 +541,68 @@ app.post('/api/tournament/reset', (req, res) => {
   res.json({ success: true });
 });
 
-// Admin reset
-app.post('/api/admin/reset', (req, res) => {
-  db.resetDB();
-  res.json({ success: true, message: 'Todo reseteado' });
-});
+
+// ============ CHEST SYSTEM ============
+function generateChest() {
+  const roll = Math.random();
+  let rarity, color, items = [];
+  
+  if (roll < 0.01) { // 1% = LEGENDARY
+    rarity = 'legendary'; color = '#ff6b00';
+    items = generateChestItems(3, [0.3, 0.4, 0.2, 0.1]); // common, rare, epic, legendary weights
+  } else if (roll < 0.08) { // 7% = EPIC  
+    rarity = 'epic'; color = '#9b59b6';
+    items = generateChestItems(2, [0.4, 0.4, 0.2, 0]);
+  } else if (roll < 0.35) { // 27% = RARE
+    rarity = 'rare'; color = '#3498db';
+    items = generateChestItems(2, [0.6, 0.3, 0.1, 0]);
+  } else { // 65% = COMMON
+    rarity = 'common'; color = '#95a5a6';
+    items = generateChestItems(1, [0.8, 0.2, 0, 0]);
+  }
+  
+  return { rarity, color, items };
+}
+
+function generateChestItems(count, tierWeights) {
+  const items = [];
+  const allWeapons = Object.entries(combat.WEAPONS);
+  const allArmors = Object.entries(combat.ARMORS);
+  const allAccessories = Object.entries(combat.ACCESSORIES);
+  const allItems = [
+    ...allWeapons.map(([id, w]) => ({ type: 'weapon', id, name: w.name, emoji: w.emoji })),
+    ...allArmors.map(([id, a]) => ({ type: 'armor', id, name: a.name, emoji: a.emoji })),
+    ...allAccessories.map(([id, a]) => ({ type: 'accessory', id, name: a.name, emoji: a.emoji }))
+  ];
+  
+  for (let i = 0; i < count; i++) {
+    const r = Math.random();
+    if (r < 0.4) {
+      // Gold reward
+      const goldAmounts = [
+        { min: 10, max: 30 },   // common
+        { min: 30, max: 80 },   // rare
+        { min: 80, max: 200 },  // epic
+        { min: 200, max: 500 }  // legendary
+      ];
+      const tierRoll = Math.random();
+      let tier = 0;
+      let cumul = 0;
+      for (let t = 0; t < tierWeights.length; t++) {
+        cumul += tierWeights[t];
+        if (tierRoll < cumul) { tier = t; break; }
+      }
+      const range = goldAmounts[tier];
+      const gold = Math.floor(range.min + Math.random() * (range.max - range.min));
+      items.push({ type: 'gold', amount: gold, emoji: '🪙', name: gold + ' oro', tier });
+    } else {
+      // Item reward
+      const item = allItems[Math.floor(Math.random() * allItems.length)];
+      items.push({ ...item, tier: 0 });
+    }
+  }
+  return items;
+}
 
 // ============ PVE ARENA ============
 const NPC_TEMPLATES = {
@@ -692,6 +768,31 @@ app.post('/api/fight/pve', (req, res) => {
   const updatedChar = db.getCharacterById(char.id);
   const updatedFights = db.getPveFightsHour(char.id);
 
+  // Chest roll (10% on win)
+  let chest = null;
+  if (isWin && Math.random() < 0.10) {
+    chest = generateChest();
+    // Apply chest rewards
+    let chestGold = 0;
+    const chestItems = [];
+    for (const item of chest.items) {
+      if (item.type === 'gold') {
+        chestGold += item.amount;
+      } else {
+        chestItems.push({ type: item.type, id: item.id });
+      }
+    }
+    if (chestGold > 0 || chestItems.length > 0) {
+      const inv = JSON.parse(updatedChar.inventory || '[]');
+      inv.push(...chestItems);
+      db.updateCharacter(char.id, { 
+        inventory: JSON.stringify(inv), 
+        gold: (updatedChar.gold || 0) + chestGold 
+      });
+      updatedChar = db.getCharacterById(char.id);
+    }
+  }
+
   const pveResponse = {
     result: isWin ? 'win' : 'lose',
     log: result.log,
@@ -740,6 +841,7 @@ app.post('/api/shop/buy', (req, res) => {
   if (!shopItem) return res.status(400).json({ error: 'Item no disponible en la tienda' });
   if ((char.gold || 0) < price) return res.status(400).json({ error: 'No tienes suficiente oro' });
   const inventory = JSON.parse(char.inventory || '[]');
+  if (inventory.some(i => i.type === itemType && i.id === itemId)) return res.status(400).json({ error: 'Ya tienes este objeto' });
   inventory.push({ type: itemType, id: itemId });
   db.updateCharacter(char.id, { inventory: JSON.stringify(inventory), gold: (char.gold || 0) - price });
   res.json({ success: true, character: db.getCharacterById(char.id) });

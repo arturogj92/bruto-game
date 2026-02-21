@@ -580,13 +580,17 @@ App.acceptChallenge = async function(challengeId) {
     // Play combat animation
     var introEntry = result.log.find(function(e) { return e.type === 'intro'; });
     if (introEntry) {
+      var mySlug = App.currentPlayer.slug;
+      var challengerSlug = result.challenger.player_slug || result.challenger.player_avatar || 'guerrero';
+      var challengedSlug = result.challenged.player_slug || result.challenged.player_avatar || 'guerrero';
+      var iAmF1 = introEntry.f1.name === App.currentCharacter.name;
       var f1 = {
         name: introEntry.f1.name, level: introEntry.f1.level, hp_max: introEntry.f1.hp_max,
-        avatarImg: getAvatarUrl(result.challenger.player_slug || result.challenger.player_avatar || 'guerrero')
+        avatarImg: iAmF1 ? getAvatarUrl(mySlug) : getAvatarUrl(introEntry.f1.name === result.challenger.name ? challengerSlug : challengedSlug)
       };
       var f2 = {
         name: introEntry.f2.name, level: introEntry.f2.level, hp_max: introEntry.f2.hp_max,
-        avatarImg: getAvatarUrl(result.challenged.player_slug || result.challenged.player_avatar || 'guerrero')
+        avatarImg: iAmF1 ? getAvatarUrl(introEntry.f2.name === result.challenger.name ? challengerSlug : challengedSlug) : getAvatarUrl(mySlug)
       };
       await App.playCombat(f1, f2, result.log, false);
     }
