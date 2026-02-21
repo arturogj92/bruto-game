@@ -21,7 +21,7 @@ function getAvatarUrl(playerSlugOrAvatar) {
 const Views = {
   // Player Selection
   playerSelect(players) {
-    return '<div class="screen active">' +
+    return '<div class="screen active screen-select">' +
       '<div style="text-align:center; margin-bottom:12px;">' +
         '<div style="font-size:48px;">⚔️</div>' +
         '<h1 class="game-title" style="font-size:32px; margin:8px 0;">EL BRUTO</h1>' +
@@ -128,7 +128,7 @@ const Views = {
       '</div>';
     }
 
-    return '<div class="screen active">' +
+    return '<div class="screen active screen-character">' +
       '<div class="header">' +
         '<button class="header-back" onclick="App.goBack()">←</button>' +
         '<div class="header-title">⚔️ Arena</div>' +

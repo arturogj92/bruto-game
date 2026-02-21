@@ -320,7 +320,9 @@ body {
   padding: 12px; position: relative; overflow-x: hidden; overflow-y: auto;
 }
 .arena-bg {
-  position: absolute; inset: 0; opacity: 0.04;
+  background-image: url("/img/backgrounds/arena_combat.png");
+  background-size: cover; background-position: center;
+  position: absolute; inset: 0; opacity: 0.15;
   background: repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(255,255,255,0.02) 20px, rgba(255,255,255,0.02) 40px);
   pointer-events: none;
 }
@@ -2304,3 +2306,28 @@ body {
   .tactical-card-icon { font-size: 32px; }
   .tactical-card { padding: 14px 10px; }
 }
+
+/* Pixel art backgrounds by Burricalvo */
+.screen-select {
+  background-image: url('/img/backgrounds/world_map.png');
+  background-size: cover; background-position: center;
+  position: relative;
+}
+.screen-select::before {
+  content: ''; position: absolute; inset: 0;
+  background: rgba(10,10,20,0.82);
+  pointer-events: none;
+}
+.screen-select > * { position: relative; z-index: 1; }
+
+.screen-character {
+  background-image: url('/img/backgrounds/character_profile.png');
+  background-size: cover; background-position: center;
+  position: relative;
+}
+.screen-character::before {
+  content: ''; position: absolute; inset: 0;
+  background: rgba(10,10,20,0.78);
+  pointer-events: none;
+}
+.screen-character > * { position: relative; z-index: 1; }
