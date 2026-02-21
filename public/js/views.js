@@ -165,10 +165,14 @@ const Views = {
       '<div class="equip-card">' +
         '<div class="equip-title">🎒 Equipamiento</div>' +
         '<div class="equip-slots">' +
-          Views.equipSlot('weapon', '⚔️ Arma', character.weapon, defs ? defs.weapons : null, inventory, character.id) +
+          Views.equipSlot('weapon', '⚔️ Arma 1', character.weapon, defs ? defs.weapons : null, inventory, character.id) +
+          Views.equipSlot('weapon2', '⚔️ Arma 2', character.weapon2, defs ? defs.weapons : null, inventory, character.id) +
+          Views.equipSlot('weapon3', '⚔️ Arma 3', character.weapon3, defs ? defs.weapons : null, inventory, character.id) +
+          Views.equipSlot('weapon4', '⚔️ Arma 4', character.weapon4, defs ? defs.weapons : null, inventory, character.id) +
           Views.equipSlot('armor', '🛡️ Armadura', character.armor, defs ? defs.armors : null, inventory, character.id) +
           Views.equipSlot('accessory', '💍 Accesorio', character.accessory, defs ? defs.accessories : null, inventory, character.id) +
         '</div>' +
+        Views.combosSection(character, defs) +
       '</div>' +
 
       '<div class="action-grid">' +
@@ -225,12 +229,14 @@ const Views = {
   },
 
   equipSlot(slotType, label, equippedId, defsMap, inventory, charId) {
-    var items = (inventory || []).filter(function(i) { return i.type === slotType; });
+    var itemType = slotType.startsWith('weapon') ? 'weapon' : slotType;
+    var items = (inventory || []).filter(function(i) { return i.type === itemType; });
     var equipped = equippedId && defsMap ? defsMap[equippedId] : null;
     
     var selectHtml = '';
-    if (items.length > 1) {
+    if (items.length > 0) {
       selectHtml = '<select class="slot-select" onchange="App.equipItem(\'' + slotType + '\', this.value)">' +
+        '<option value="">-- Vacío --</option>' +
         items.map(function(i) {
           var def = defsMap ? defsMap[i.id] : null;
           return '<option value="' + i.id + '"' + (i.id === equippedId ? ' selected' : '') + '>' + (def ? def.emoji + ' ' + def.name : i.id) + '</option>';
@@ -250,10 +256,53 @@ const Views = {
     '</div>';
   },
 
+  combosSection(character, defs) {
+    if (!defs || !defs.combos) return '';
+    var equipped = [character.weapon, character.weapon2, character.weapon3, character.weapon4].filter(Boolean);
+    var html = '<div class="combos-section">' +
+      '<div class="combos-title">⚔️ Combinaciones de Armas</div>' +
+      '<div class="combos-grid">';
+    
+    var combos = defs.combos;
+    for (var id in combos) {
+      var combo = combos[id];
+      var isActive = false;
+      
+      // Check if combo is active
+      if (combo.weapons[0] === '__any_4_distinct__') {
+        var unique = new Set(equipped);
+        isActive = unique.size >= 4;
+      } else {
+        var required = combo.weapons.slice();
+        var available = equipped.slice();
+        isActive = true;
+        for (var r = 0; r < required.length; r++) {
+          var idx = available.indexOf(required[r]);
+          if (idx === -1) { isActive = false; break; }
+          available.splice(idx, 1);
+        }
+        if (combo.requireAccessory && character.accessory !== combo.requireAccessory) isActive = false;
+      }
+      
+      html += '<div class="combo-card ' + (isActive ? 'combo-active' : 'combo-locked') + '">' +
+        '<div class="combo-emoji">' + combo.emoji + '</div>' +
+        '<div class="combo-name">' + combo.name + '</div>' +
+        '<div class="combo-desc">' + (isActive ? combo.bonusDesc : '???') + '</div>' +
+        '<div class="combo-weapons">' + (isActive ? combo.description : 'Combina las armas correctas') + '</div>' +
+      '</div>';
+    }
+    
+    html += '</div></div>';
+    return html;
+  },
+
   calcEffective(char, defs) {
     var s = { hp_max: char.hp_max, strength: char.strength, defense: char.defense, speed: char.speed };
-    if (char.weapon && defs && defs.weapons && defs.weapons[char.weapon]) {
-      var w = defs.weapons[char.weapon]; s.strength += (w.damage||0); s.speed += (w.speed||0);
+    var weaponSlots = [char.weapon, char.weapon2, char.weapon3, char.weapon4];
+    for (var wi = 0; wi < weaponSlots.length; wi++) {
+      if (weaponSlots[wi] && defs && defs.weapons && defs.weapons[weaponSlots[wi]]) {
+        var w = defs.weapons[weaponSlots[wi]]; s.strength += (w.damage||0); s.speed += (w.speed||0);
+      }
     }
     if (char.armor && defs && defs.armors && defs.armors[char.armor]) {
       var a = defs.armors[char.armor]; s.defense += (a.defense||0); s.speed += (a.speed||0); s.hp_max += (a.hp||0);

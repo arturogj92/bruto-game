@@ -2362,3 +2362,16 @@ body {
   }
   .arena-bg { opacity: 0.35; }
 }
+/* ============ WEAPON COMBOS ============ */
+.combos-section { margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 8px; }
+.combos-title { font-size: 14px; font-weight: bold; color: #ffd700; margin-bottom: 8px; text-align: center; }
+.combos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.combo-card { padding: 8px; border-radius: 6px; text-align: center; font-size: 12px; }
+.combo-active { background: rgba(76, 175, 80, 0.3); border: 1px solid #4caf50; }
+.combo-locked { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); opacity: 0.6; }
+.combo-emoji { font-size: 20px; margin-bottom: 2px; }
+.combo-name { font-weight: bold; color: #fff; font-size: 11px; }
+.combo-desc { color: #aaa; font-size: 10px; margin-top: 2px; }
+.combo-active .combo-desc { color: #4caf50; }
+.combo-weapons { color: #888; font-size: 9px; margin-top: 2px; font-style: italic; }
+.combo-active .combo-weapons { color: #81c784; }

@@ -297,8 +297,12 @@ const App = {
   async equipItem(slot, itemId) {
     if (!this.currentCharacter) return;
     try {
-      await API.equipItem(this.currentCharacter.id, slot, itemId);
-      this.toast("Equipado ✅", "success");
+      const result = await API.equipItem(this.currentCharacter.id, slot, itemId || null);
+      if (result.newCombos && result.newCombos.length > 0) {
+        result.newCombos.forEach(c => this.toast("🔓 Combo: " + c.emoji + " " + c.name + "!", "success"));
+      } else {
+        this.toast("Equipado ✅", "success");
+      }
       await this.showHub();
     } catch(e) { this.toast("Error: " + e.message, "error"); }
   },
