@@ -167,6 +167,8 @@ const getPlayerById = (id) => db.prepare('SELECT * FROM players WHERE id = ?').g
 
 // Character queries
 const getCharacter = (playerId) => db.prepare('SELECT * FROM characters WHERE player_id = ?').get(playerId);
+const getCharacters = (playerId) => db.prepare('SELECT * FROM characters WHERE player_id = ? ORDER BY id').all(playerId);
+const getCharacterCount = (playerId) => db.prepare('SELECT COUNT(*) as count FROM characters WHERE player_id = ?').get(playerId).count;
 const getCharacterById = (id) => db.prepare('SELECT * FROM characters WHERE id = ?').get(id);
 const getAllCharacters = () => db.prepare(`
   SELECT c.*, p.display_name as player_name, p.slug as player_slug, p.avatar as player_avatar
@@ -430,7 +432,7 @@ module.exports = {
   initCombatHistory, addCombatHistory, getCombatHistory,
   db, init,
   getPlayers, getPlayer, getPlayerById,
-  getCharacter, getCharacterById, getAllCharacters,
+  getCharacter, getCharacters, getCharacterCount, getCharacterById, getAllCharacters,
   createCharacter, updateCharacter,
   addFightLog, getFightLogById, getFightHistory,
   getActiveTournament, createTournament, updateTournament,

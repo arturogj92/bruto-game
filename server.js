@@ -74,31 +74,50 @@ app.get('/api/players', (req, res) => {
   const players = db.getPlayers();
   const chars = db.getAllCharacters();
   const charMap = {};
-  for (const c of chars) charMap[c.player_id] = c;
-  res.json(players.map(p => ({ ...p, character: charMap[p.id] || null })));
+  const charsMap = {};
+  for (const c of chars) {
+    if (!charMap[c.player_id]) charMap[c.player_id] = c;
+    if (!charsMap[c.player_id]) charsMap[c.player_id] = [];
+    charsMap[c.player_id].push(c);
+  }
+  res.json(players.map(p => ({ ...p, character: charMap[p.id] || null, characters: charsMap[p.id] || [] })));
 });
 
-// Get single player + character
+// Get single player + characters
 app.get('/api/player/:slug', (req, res) => {
   const player = db.getPlayer(req.params.slug);
   if (!player) return res.status(404).json({ error: 'Player not found' });
-  const character = db.getCharacter(player.id);
-  res.json({ ...player, character });
+  const characters = db.getCharacters(player.id);
+  const character = characters[0] || null;
+  res.json({ ...player, character, characters });
 });
 
-// Create character
+// Create character (max 3 per player, 2nd+ cost 2500 gold)
+const NEW_CHAR_COST = 2500;
 app.post('/api/player/:slug/character', (req, res) => {
   const player = db.getPlayer(req.params.slug);
   if (!player) return res.status(404).json({ error: 'Player not found' });
-  const existing = db.getCharacter(player.id);
-  if (existing) return res.status(400).json({ error: 'Ya tienes un personaje' });
+  
+  const charCount = db.getCharacterCount(player.id);
+  if (charCount >= 3) return res.status(400).json({ error: 'Máximo 3 personajes por jugador' });
+  
   const { name } = req.body;
   if (!name || name.length < 2 || name.length > 20) {
     return res.status(400).json({ error: 'Nombre inválido (2-20 chars)' });
   }
+
+  // 2nd and 3rd characters cost gold (taken from first character's gold)
+  if (charCount > 0) {
+    const firstChar = db.getCharacters(player.id)[0];
+    if ((firstChar.gold || 0) < NEW_CHAR_COST) {
+      return res.status(400).json({ error: `Necesitas ${NEW_CHAR_COST} oro para crear otro personaje (tienes ${firstChar.gold || 0})` });
+    }
+    db.updateCharacter(firstChar.id, { gold: (firstChar.gold || 0) - NEW_CHAR_COST });
+  }
+
   db.createCharacter(player.id, name);
-  const character = db.getCharacter(player.id);
-  res.json({ success: true, character });
+  const characters = db.getCharacters(player.id);
+  res.json({ success: true, character: characters[characters.length - 1], characters });
 });
 
 // Get character details
