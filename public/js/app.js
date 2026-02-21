@@ -116,6 +116,10 @@ const App = {
   // ============ MATCHMAKING PVP ============
   async matchmaking() {
     if (!this.currentCharacter) return;
+    if (this._matchmakingInProgress) return;
+    this._matchmakingInProgress = true;
+    // Disable all fight buttons while searching
+    document.querySelectorAll('.qn-fight, .action-fight').forEach(b => { b.style.pointerEvents = 'none'; b.style.opacity = '0.5'; });
     try {
       this.toast("🔎 Buscando rival...", "info");
       const result = await API.matchmaking(this.currentCharacter.id);
@@ -140,6 +144,10 @@ const App = {
 
       this.showResult(result.result === "win", result.xpGained, result.character, result.leveledUp, result.goldGained);
     } catch(e) { this.toast("Error: " + e.message, "error"); }
+    finally {
+      this._matchmakingInProgress = false;
+      document.querySelectorAll('.qn-fight, .action-fight').forEach(b => { b.style.pointerEvents = ''; b.style.opacity = ''; });
+    }
   },
 
   // ============ DIRECT PVP ============
