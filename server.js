@@ -220,7 +220,7 @@ app.post('/api/fight/matchmaking', (req, res) => {
     wager: 0
   });
 
-  const updatedChar = db.getCharacterById(char.id);
+  let updatedChar = db.getCharacterById(char.id);
   const updatedOpp = db.getCharacterById(opponent.id);
   const oppPlayer = db.getPlayerById(opponent.player_id);
 
@@ -765,7 +765,7 @@ app.post('/api/fight/pve', (req, res) => {
     wager: 0
   });
 
-  const updatedChar = db.getCharacterById(char.id);
+  let updatedChar = db.getCharacterById(char.id);
   const updatedFights = db.getPveFightsHour(char.id);
 
   // Chest roll (10% on win)
