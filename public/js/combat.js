@@ -8,10 +8,10 @@ class QTESystem {
     this.animId = null;
     this.resolved = false;
     this.startTime = 0;
-    this.duration = 1500; // 1.5 seconds
-    this.criticalZoneStart = 0.425; // 15% zone centered
-    this.criticalZoneEnd = 0.575;
-    this.speed = 2.2; // full traversals per duration
+    this.duration = 1200; // 1.2 seconds
+    this.criticalZoneStart = 0.455; // 9% zone centered
+    this.criticalZoneEnd = 0.545;
+    this.speed = 3.1; // full traversals per duration
     this.audioCtx = null;
   }
 
