@@ -14,6 +14,8 @@ db.initCombatHistory();
 
 // In-memory active combats store
 const activeCombats = {};
+const lastFightTime = {}; // Anti-spam: track last fight timestamp per character
+const FIGHT_COOLDOWN_MS = 3000; // 3 second cooldown between fights
 
 // ============ GOLD HELPERS ============
 function calcPvPGold(winnerLevel) {
@@ -138,6 +140,17 @@ app.post('/api/fight/matchmaking', (req, res) => {
   const { charId } = req.body;
   const char = db.getCharacterById(charId);
   if (!char) return res.status(404).json({ error: 'Character not found' });
+
+  // Anti-spam: prevent rapid-fire matchmaking
+  const now = Date.now();
+  if (lastFightTime[charId] && (now - lastFightTime[charId]) < FIGHT_COOLDOWN_MS) {
+    return res.status(429).json({ error: 'Espera un momento antes de buscar otra pelea' });
+  }
+  // Check if already in combat
+  if (activeCombats[charId]) {
+    return res.status(409).json({ error: 'Ya estás en un combate' });
+  }
+  lastFightTime[charId] = now;
 
   const allChars = db.getAllCharacters();
   const opponents = allChars.filter(c => c.id !== char.id);
