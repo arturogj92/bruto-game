@@ -140,6 +140,13 @@ const Views = {
         '</div>' +
       '</div>' +
 
+      '<div class="quick-nav">' +
+        '<button class="qn-btn qn-fight" onclick="App.matchmaking()">⚔️ Combate</button>' +
+        '<button class="qn-btn qn-pve" onclick="App.showPveArena()">🏟️ PvE</button>' +
+        '<button class="qn-btn" onclick="App.showPVPSelect()">🎯 Retar</button>' +
+        '<button class="qn-btn" onclick="App.showComboBook()">📖 Combos</button>' +
+      '</div>' +
+
       '<div class="stats-card">' +
         '<div class="stats-header">' +
           '<div class="stats-avatar-img"><img src="' + imgUrl + '" alt="' + character.name + '"></div>' +
