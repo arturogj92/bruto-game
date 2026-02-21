@@ -416,6 +416,40 @@ app.post('/api/character/:id/equip', (req, res) => {
   res.json({ success: true, character: updated, newCombos });
 });
 
+
+// Compare stats when equipping a different weapon
+app.get('/api/character/:id/compare', (req, res) => {
+  const char = db.getCharacterById(parseInt(req.params.id));
+  if (!char) return res.status(404).json({ error: 'Character not found' });
+  
+  const { slot, itemId } = req.query;
+  if (!slot || !itemId) return res.status(400).json({ error: 'Missing slot or itemId' });
+  
+  const defs = { weapons: combat.WEAPONS, armors: combat.ARMORS, accessories: combat.ACCESSORIES };
+  
+  // Current stats
+  const currentStats = combat.calculateEffectiveStats(char, defs);
+  
+  // Simulated stats with new item
+  const simChar = { ...char, [slot]: itemId === 'null' ? null : itemId };
+  const newStats = combat.calculateEffectiveStats(simChar, defs);
+  
+  // Calculate diffs
+  const diff = {};
+  for (const key of ['hp_max', 'strength', 'defense', 'speed']) {
+    const d = (newStats[key] || 0) - (currentStats[key] || 0);
+    if (d !== 0) diff[key] = d;
+  }
+  
+  // Check active combos change
+  const currentCombos = combat.getActiveCombos(char);
+  const newCombos = combat.getActiveCombos(simChar);
+  const gainedCombos = newCombos.filter(c => !currentCombos.find(cc => cc.id === c.id));
+  const lostCombos = currentCombos.filter(c => !newCombos.find(nc => nc.id === c.id));
+  
+  res.json({ current: currentStats, proposed: newStats, diff, gainedCombos, lostCombos });
+});
+
 // Get ability/item/combo definitions
 app.get('/api/definitions', (req, res) => {
   res.json({

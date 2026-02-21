@@ -235,7 +235,8 @@ const Views = {
     
     var selectHtml = '';
     if (items.length > 0) {
-      selectHtml = '<select class="slot-select" onchange="App.previewAndEquip(\'' + slotType + '\', this.value)">' +
+      selectHtml = '<select class="slot-select" onchange="App.previewEquip(\'' + slotType + '\', this.value, this)" ' +
+        'data-slot="' + slotType + '" data-char="' + charId + '">' +
         '<option value="">-- Vacío --</option>' +
         items.map(function(i) {
           var def = defsMap ? defsMap[i.id] : null;
@@ -253,6 +254,7 @@ const Views = {
           '<div class="slot-empty">Vacío</div>') +
       '</div>' +
       selectHtml +
+      '<div class="stat-compare-tooltip" id="compare-' + slotType + '" style="display:none"></div>' +
     '</div>';
   },
 

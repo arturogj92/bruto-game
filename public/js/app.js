@@ -330,8 +330,59 @@ const App = {
       } else {
         this.toast("Equipado ✅", "success");
       }
+      // Hide any compare tooltip
+      var tip = document.getElementById('compare-' + slot);
+      if (tip) tip.style.display = 'none';
       await this.showHub();
     } catch(e) { this.toast("Error: " + e.message, "error"); }
+  },
+
+  async previewEquip(slot, itemId, selectEl) {
+    if (!this.currentCharacter) return;
+    var tip = document.getElementById('compare-' + slot);
+    
+    if (!itemId) {
+      // Selected empty - just equip
+      if (tip) tip.style.display = 'none';
+      return this.equipItem(slot, null);
+    }
+    
+    try {
+      var data = await API.compareEquip(this.currentCharacter.id, slot, itemId);
+      if (tip && data.diff) {
+        var statLabels = { hp_max: '❤️ Vida', strength: '💪 Fuerza', defense: '🛡️ Defensa', speed: '⚡ Velocidad' };
+        var diffKeys = Object.keys(data.diff);
+        
+        if (diffKeys.length === 0 && (!data.gainedCombos || data.gainedCombos.length === 0) && (!data.lostCombos || data.lostCombos.length === 0)) {
+          tip.innerHTML = '<div class="compare-same">Sin cambios en stats</div>' +
+            '<button class="btn-compare-equip" onclick="App.equipItem(\'' + slot + '\', \'' + itemId + '\')">Equipar</button>';
+        } else {
+          var html = '<div class="compare-title">📊 Comparativa</div>';
+          diffKeys.forEach(function(k) {
+            var v = data.diff[k];
+            var cls = v > 0 ? 'stat-up' : 'stat-down';
+            var sign = v > 0 ? '+' : '';
+            html += '<div class="compare-stat ' + cls + '">' + (statLabels[k] || k) + ': ' + sign + v + '</div>';
+          });
+          if (data.gainedCombos && data.gainedCombos.length > 0) {
+            data.gainedCombos.forEach(function(c) {
+              html += '<div class="compare-combo gained">🔓 +' + c.name + '</div>';
+            });
+          }
+          if (data.lostCombos && data.lostCombos.length > 0) {
+            data.lostCombos.forEach(function(c) {
+              html += '<div class="compare-combo lost">❌ -' + c.name + '</div>';
+            });
+          }
+          html += '<button class="btn-compare-equip" onclick="App.equipItem(\'' + slot + '\', \'' + itemId + '\')">✅ Equipar</button>';
+          tip.innerHTML = html;
+        }
+        tip.style.display = 'block';
+      }
+    } catch(e) {
+      // Fallback: just equip directly
+      this.equipItem(slot, itemId);
+    }
   },
 
   // ============ LEADERBOARD ============

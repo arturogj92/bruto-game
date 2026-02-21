@@ -2434,3 +2434,32 @@ body {
 .combo-active .combo-desc { color: #4caf50; }
 .combo-weapons { color: #888; font-size: 9px; margin-top: 2px; font-style: italic; }
 .combo-active .combo-weapons { color: #81c784; }
+
+/* ====== STAT COMPARISON TOOLTIP (Burricalvo) ====== */
+.stat-compare-tooltip {
+  margin-top: 8px; padding: 10px; border-radius: 10px;
+  background: linear-gradient(135deg, rgba(20,20,40,0.95), rgba(30,30,50,0.95));
+  border: 1px solid rgba(255,215,0,0.3);
+  animation: fadeIn 0.2s ease;
+}
+.compare-title {
+  font-size: 0.8rem; font-weight: 700; color: #ffd700;
+  margin-bottom: 6px; text-align: center;
+}
+.compare-stat {
+  font-size: 0.82rem; padding: 2px 0;
+}
+.compare-stat.stat-up { color: #44ff66; }
+.compare-stat.stat-down { color: #ff4444; }
+.compare-same { color: #888; font-size: 0.78rem; text-align: center; }
+.compare-combo { font-size: 0.75rem; margin-top: 3px; }
+.compare-combo.gained { color: #44ff66; }
+.compare-combo.lost { color: #ff4444; }
+.btn-compare-equip {
+  margin-top: 8px; width: 100%; padding: 8px;
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  border: none; border-radius: 8px; color: #1a1a2e;
+  font-weight: 700; font-size: 0.85rem; cursor: pointer;
+  transition: transform 0.1s;
+}
+.btn-compare-equip:active { transform: scale(0.97); }

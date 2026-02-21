@@ -24,6 +24,7 @@ const API = {
   getFightHistory(charId) { return this.get("/api/fights/" + charId); },
   getDiscoveries(playerId) { return this.get("/api/discoveries/" + playerId); },
   getActiveCombos(charId) { return this.get("/api/character/" + charId + "/combos"); },
+  compareEquip(charId, slot, itemId) { return this.get("/api/character/" + charId + "/compare?slot=" + slot + "&itemId=" + itemId); },
   getTournament() { return this.get("/api/tournament"); },
   startTournament() { return this.post("/api/tournament/start"); },
   playTournamentMatch(matchId) { return this.post("/api/tournament/match/" + matchId); },

@@ -792,9 +792,37 @@ function getAbilityDefs() {
   return ABILITIES;
 }
 
+
+function calculateEffectiveStats(char, defs) {
+  const s = { hp_max: char.hp_max || 100, strength: char.strength || 10, defense: char.defense || 5, speed: char.speed || 5 };
+  const weaponSlots = [char.weapon, char.weapon2, char.weapon3, char.weapon4];
+  for (const wid of weaponSlots) {
+    if (wid && defs.weapons && defs.weapons[wid]) {
+      const w = defs.weapons[wid];
+      s.strength += (w.damage || 0);
+      s.speed += (w.speed || 0);
+    }
+  }
+  if (char.armor && defs.armors && defs.armors[char.armor]) {
+    const a = defs.armors[char.armor];
+    s.defense += (a.defense || 0);
+    s.speed += (a.speed || 0);
+    s.hp_max += (a.hp || 0);
+  }
+  if (char.accessory && defs.accessories && defs.accessories[char.accessory]) {
+    const ac = defs.accessories[char.accessory];
+    s.strength += (ac.strength || 0);
+    s.defense += (ac.defense || 0);
+    s.speed += (ac.speed || 0);
+    s.hp_max += (ac.hp || 0);
+  }
+  return s;
+}
+
 module.exports = {
   simulateCombat, levelUp, getXPForLevel, getAbilityDefs,
   generateLevelUpChoices, applyLevelUpChoice, getEffectiveStats,
   getEquippedWeapons, getActiveCombos,
-  ABILITIES, WEAPONS, ARMORS, ACCESSORIES, STAT_BOOSTS, WEAPON_COMBOS
+  ABILITIES, WEAPONS, ARMORS, ACCESSORIES, STAT_BOOSTS, WEAPON_COMBOS,
+  calculateEffectiveStats
 };
