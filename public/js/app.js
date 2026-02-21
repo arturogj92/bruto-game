@@ -283,7 +283,9 @@ const App = {
       const result = await API.chooseLevelUp(this.currentCharacter.id, index);
       this.currentCharacter = result.character;
       this._pendingChoices = null;
-      this.toast("¡Conseguido: " + result.chosen.emoji + " " + result.chosen.name + "!", "success");
+      if (result.chosen) {
+        this.toast("¡Conseguido: " + result.chosen.emoji + " " + result.chosen.name + "!", "success");
+      }
       const modal = document.getElementById("levelup-modal");
       if (modal) modal.remove();
       this.screenStack = ["select", "hub"];
