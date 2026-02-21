@@ -162,19 +162,6 @@ const Views = {
         abilitiesHtml +
       '</div>' +
 
-      '<div class="equip-card">' +
-        '<div class="equip-title">🎒 Equipamiento</div>' +
-        '<div class="equip-slots">' +
-          Views.equipSlot('weapon', '⚔️ Arma 1', character.weapon, defs ? defs.weapons : null, inventory, character.id) +
-          Views.equipSlot('weapon2', '⚔️ Arma 2', character.weapon2, defs ? defs.weapons : null, inventory, character.id) +
-          Views.equipSlot('weapon3', '⚔️ Arma 3', character.weapon3, defs ? defs.weapons : null, inventory, character.id) +
-          Views.equipSlot('weapon4', '⚔️ Arma 4', character.weapon4, defs ? defs.weapons : null, inventory, character.id) +
-          Views.equipSlot('armor', '🛡️ Armadura', character.armor, defs ? defs.armors : null, inventory, character.id) +
-          Views.equipSlot('accessory', '💍 Accesorio', character.accessory, defs ? defs.accessories : null, inventory, character.id) +
-        '</div>' +
-        Views.combosSection(character, defs) +
-      '</div>' +
-
       '<div class="action-grid">' +
         '<div class="action-card action-fight" onclick="App.matchmaking()">' +
           '<div class="action-icon">⚔️</div>' +
@@ -216,6 +203,19 @@ const Views = {
           '<div class="action-name">Historial</div>' +
           '<div class="action-desc">Tus combates</div>' +
         '</div>' +
+      '</div>' +
+
+      '<div class="equip-card">' +
+        '<div class="equip-title">🎒 Equipamiento</div>' +
+        '<div class="equip-slots">' +
+          Views.equipSlot('weapon', '⚔️ Arma 1', character.weapon, defs ? defs.weapons : null, inventory, character.id) +
+          Views.equipSlot('weapon2', '⚔️ Arma 2', character.weapon2, defs ? defs.weapons : null, inventory, character.id) +
+          Views.equipSlot('weapon3', '⚔️ Arma 3', character.weapon3, defs ? defs.weapons : null, inventory, character.id) +
+          Views.equipSlot('weapon4', '⚔️ Arma 4', character.weapon4, defs ? defs.weapons : null, inventory, character.id) +
+          Views.equipSlot('armor', '🛡️ Armadura', character.armor, defs ? defs.armors : null, inventory, character.id) +
+          Views.equipSlot('accessory', '💍 Accesorio', character.accessory, defs ? defs.accessories : null, inventory, character.id) +
+        '</div>' +
+        Views.combosSection(character, defs) +
       '</div>' +
     '</div>';
   },
