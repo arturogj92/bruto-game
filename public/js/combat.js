@@ -1,4 +1,184 @@
 // Combat Animation System v2 - Visual real-time combat (PvP + PvE)
+// QTE (Quick Time Event) System integrated
+
+class QTESystem {
+  constructor() {
+    this.overlay = null;
+    this.markerPos = 0;
+    this.animId = null;
+    this.resolved = false;
+    this.startTime = 0;
+    this.duration = 1500; // 1.5 seconds
+    this.criticalZoneStart = 0.425; // 15% zone centered
+    this.criticalZoneEnd = 0.575;
+    this.speed = 2.2; // full traversals per duration
+    this.audioCtx = null;
+  }
+
+  _beep(freq, duration, type) {
+    try {
+      if (!this.audioCtx) this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var osc = this.audioCtx.createOscillator();
+      var gain = this.audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(this.audioCtx.destination);
+      osc.type = type || "square";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.12, this.audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + duration);
+      osc.start();
+      osc.stop(this.audioCtx.currentTime + duration);
+    } catch(e) { /* audio not supported */ }
+  }
+
+  show() {
+    var self = this;
+    return new Promise(function(resolve) {
+      self.resolved = false;
+      self.markerPos = 0;
+      self.startTime = performance.now();
+
+      // Create overlay
+      self.overlay = document.createElement("div");
+      self.overlay.className = "qte-overlay";
+      self.overlay.innerHTML =
+        '<div class="qte-prompt">⚡ ATTACK! ⚡</div>' +
+        '<div class="qte-bar-container">' +
+          '<div class="qte-bar">' +
+            '<div class="qte-zone-critical"></div>' +
+            '<div class="qte-marker"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="qte-hint">SPACE / TAP</div>';
+
+      document.body.appendChild(self.overlay);
+
+      // Force reflow then show
+      self.overlay.offsetHeight;
+      self.overlay.classList.add("qte-visible");
+
+      self._beep(440, 0.15, "square");
+
+      var marker = self.overlay.querySelector(".qte-marker");
+      var bar = self.overlay.querySelector(".qte-bar");
+      var barWidth = bar.offsetWidth;
+
+      // Animate marker with requestAnimationFrame
+      function animate(now) {
+        if (self.resolved) return;
+        var elapsed = now - self.startTime;
+        if (elapsed >= self.duration) {
+          // Time's up - miss
+          self._resolveMiss(resolve);
+          return;
+        }
+        // Ping-pong movement
+        var progress = (elapsed / self.duration) * self.speed;
+        var cycle = progress % 2;
+        self.markerPos = cycle <= 1 ? cycle : 2 - cycle;
+        var px = self.markerPos * (barWidth - 4);
+        marker.style.transform = "translateX(" + px + "px)";
+        self.animId = requestAnimationFrame(animate);
+      }
+      self.animId = requestAnimationFrame(animate);
+
+      // Input handlers
+      function onInput(e) {
+        if (self.resolved) return;
+        if (e.type === "keydown" && e.code !== "Space") return;
+        if (e.type === "keydown") e.preventDefault();
+        self._resolveHit(resolve);
+      }
+      self._onKey = onInput;
+      self._onTouch = onInput;
+      document.addEventListener("keydown", self._onKey);
+      self.overlay.addEventListener("touchstart", self._onTouch, { passive: true });
+      self.overlay.addEventListener("click", self._onTouch);
+    });
+  }
+
+  _resolveHit(resolve) {
+    if (this.resolved) return;
+    this.resolved = true;
+    cancelAnimationFrame(this.animId);
+    document.removeEventListener("keydown", this._onKey);
+
+    var isCritical = this.markerPos >= this.criticalZoneStart && this.markerPos <= this.criticalZoneEnd;
+
+    if (isCritical) {
+      this._beep(880, 0.1, "square");
+      setTimeout(function() { try { 
+        var ctx = new (window.AudioContext || window.webkitAudioContext)();
+        var o = ctx.createOscillator(); var g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = "square"; o.frequency.value = 1100;
+        g.gain.setValueAtTime(0.15, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+        o.start(); o.stop(ctx.currentTime + 0.2);
+      } catch(e){} }, 100);
+      this._showCriticalFeedback(resolve);
+    } else {
+      this._beep(200, 0.2, "sawtooth");
+      this._showMissFeedback(resolve);
+    }
+  }
+
+  _resolveMiss(resolve) {
+    if (this.resolved) return;
+    this.resolved = true;
+    cancelAnimationFrame(this.animId);
+    document.removeEventListener("keydown", this._onKey);
+    this._beep(150, 0.3, "sawtooth");
+    this._showMissFeedback(resolve);
+  }
+
+  _showCriticalFeedback(resolve) {
+    var self = this;
+    var overlay = this.overlay;
+    overlay.innerHTML =
+      '<div class="qte-result-critical">' +
+        '<div class="qte-critical-text">💥 CRITICAL HIT! 💥</div>' +
+        '<div class="qte-critical-x2">x2 DAMAGE</div>' +
+      '</div>';
+    overlay.classList.add("qte-shake");
+    overlay.classList.add("qte-flash");
+
+    setTimeout(function() {
+      overlay.classList.remove("qte-visible");
+      setTimeout(function() {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        self.overlay = null;
+        resolve(true);
+      }, 300);
+    }, 1100);
+  }
+
+  _showMissFeedback(resolve) {
+    var self = this;
+    var overlay = this.overlay;
+    overlay.innerHTML = '<div class="qte-result-miss">miss...</div>';
+
+    setTimeout(function() {
+      overlay.classList.remove("qte-visible");
+      setTimeout(function() {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        self.overlay = null;
+        resolve(false);
+      }, 300);
+    }, 700);
+  }
+
+  cleanup() {
+    this.resolved = true;
+    cancelAnimationFrame(this.animId);
+    if (this._onKey) document.removeEventListener("keydown", this._onKey);
+    if (this.overlay && this.overlay.parentNode) {
+      this.overlay.parentNode.removeChild(this.overlay);
+    }
+    this.overlay = null;
+  }
+}
+
 class CombatAnimator {
   constructor(container, fighter1Data, fighter2Data, isPvE) {
     this.container = container;
@@ -6,6 +186,9 @@ class CombatAnimator {
     this.f2 = fighter2Data;
     this.isPvE = isPvE || false;
     this.resolve = null;
+    this.qte = new QTESystem();
+    this.qteIndices = [];
+    this.qteFired = 0;
   }
 
   render() {
@@ -41,21 +224,45 @@ class CombatAnimator {
       "</div>";
   }
 
+  _pickQTETurns(log) {
+    // Find all attack entries by the player (f1 = always the player)
+    var attackIndices = [];
+    for (var i = 0; i < log.length; i++) {
+      if (log[i].type === "attack" && log[i].attacker === this.f1.name) {
+        attackIndices.push(i);
+      }
+    }
+    if (attackIndices.length < 2) return [];
+
+    // Pick 1-3 random attack turns for QTE
+    var count = Math.min(attackIndices.length, Math.floor(Math.random() * 3) + 1);
+    // Shuffle and pick
+    var shuffled = attackIndices.slice();
+    for (var j = shuffled.length - 1; j > 0; j--) {
+      var k = Math.floor(Math.random() * (j + 1));
+      var tmp = shuffled[j]; shuffled[j] = shuffled[k]; shuffled[k] = tmp;
+    }
+    return shuffled.slice(0, count);
+  }
+
   async play(log) {
     var self = this;
+    this.qteIndices = this._pickQTETurns(log);
+    this.qteFired = 0;
+
     return new Promise(async function(resolve) {
       self.resolve = resolve;
       var turnDelay = Math.max(200, Math.min(800, 7000 / Math.max(log.length, 1)));
       
       for (var i = 0; i < log.length; i++) {
-        await self.processEntry(log[i], turnDelay);
+        await self.processEntry(log[i], turnDelay, i);
       }
       await self.wait(1200);
       resolve();
     });
   }
 
-  async processEntry(entry, baseDelay) {
+  async processEntry(entry, baseDelay, turnIndex) {
     try {
     switch (entry.type) {
       case "intro":
@@ -63,7 +270,7 @@ class CombatAnimator {
         await this.wait(800);
         break;
       case "attack":
-        await this.animateAttack(entry);
+        await this.animateAttack(entry, turnIndex);
         await this.wait(baseDelay);
         break;
       case "dodge":
@@ -126,10 +333,27 @@ class CombatAnimator {
     } catch(err) { console.error("Combat anim error:", err, entry); if (entry.text) this.addLog(entry.text, "ability"); }
   }
 
-  async animateAttack(entry) {
+  async animateAttack(entry, turnIndex) {
     var isF1 = entry.attacker === this.f1.name;
     var attackerEl = document.getElementById(isF1 ? "avatar-left" : "avatar-right");
     var defSide = isF1 ? "right" : "left";
+
+    // === QTE CHECK ===
+    var isQTETurn = this.qteIndices.indexOf(turnIndex) !== -1;
+    var qteCritical = false;
+
+    if (isQTETurn) {
+      // Show QTE before the attack animation
+      qteCritical = await this.qte.show();
+      this.qteFired++;
+    }
+
+    // Determine display damage
+    var displayDamage = entry.damage;
+    var isCriticalDisplay = entry.isCritical || qteCritical;
+    if (qteCritical) {
+      displayDamage = entry.damage * 2;
+    }
 
     if (attackerEl) {
       attackerEl.classList.add(isF1 ? "attack-anim-left" : "attack-anim-right");
@@ -139,20 +363,33 @@ class CombatAnimator {
 
     this.flashAvatar(defSide);
 
-    if (entry.isCritical || entry.damage > 30) {
+    if (isCriticalDisplay || displayDamage > 30) {
       var arena = this.container.querySelector(".arena");
-      if (arena) { arena.classList.add("screen-shake"); setTimeout(function() { arena.classList.remove("screen-shake"); }, 300); }
+      if (arena) { 
+        arena.classList.add("screen-shake"); 
+        if (qteCritical) arena.classList.add("qte-arena-critical");
+        setTimeout(function() { 
+          arena.classList.remove("screen-shake"); 
+          arena.classList.remove("qte-arena-critical"); 
+        }, qteCritical ? 500 : 300); 
+      }
     }
 
-    this.showDamageNumber(defSide, "-" + entry.damage, false, entry.isCritical);
+    this.showDamageNumber(defSide, "-" + displayDamage, false, isCriticalDisplay);
     this.updateHPSingle(defSide, entry.defenderHp, entry.defenderHpMax);
     
     var aSide = isF1 ? "left" : "right";
     if (entry.attackerHp !== undefined) this.updateHPSingle(aSide, entry.attackerHp, entry.attackerHpMax);
 
     var logClass = "damage";
-    if (entry.isCritical) logClass = "critical";
-    this.addLog(entry.text, logClass);
+    if (isCriticalDisplay) logClass = "critical";
+
+    // Modified log text for QTE critical
+    var logText = entry.text;
+    if (qteCritical) {
+      logText = "💥 ¡GOLPE CRÍTICO! " + entry.attacker + " hace " + displayDamage + " de daño a " + (entry.defender || "el rival") + "!";
+    }
+    this.addLog(logText, logClass);
   }
 
   async animateDodge(entry) {
@@ -196,6 +433,14 @@ class CombatAnimator {
   updateHPBars(f1, f2) {
     this.updateHPSingle("left", f1.hp, f1.hp_max);
     this.updateHPSingle("right", f2.hp, f2.hp_max);
+  }
+
+  syncHP(entry) {
+    if (entry.f1 && entry.f2) { this.updateHPBars(entry.f1, entry.f2); }
+    if (entry.defenderHp !== undefined) {
+      var side = entry.defender === this.f1.name || entry.target === this.f1.name ? "left" : "right";
+      this.updateHPSingle(side, entry.defenderHp, entry.defenderHpMax);
+    }
   }
 
   addLog(text, className) {

@@ -1149,3 +1149,540 @@ body {
   cursor: not-allowed !important;
   border-color: rgba(255,255,255,0.05) !important;
 }
+
+/* ============ CHALLENGES / RETOS ============ */
+
+/* Notification Bell */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.notif-bell {
+  position: relative;
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  filter: grayscale(0.5);
+}
+.notif-bell.has-notif {
+  filter: none;
+  animation: bell-shake 0.5s ease-in-out;
+}
+.notif-bell:active {
+  transform: scale(0.9);
+}
+.notif-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: #ff4444;
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+  box-shadow: 0 0 6px rgba(255, 68, 68, 0.6);
+}
+
+@keyframes bell-shake {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(15deg); }
+  40% { transform: rotate(-15deg); }
+  60% { transform: rotate(10deg); }
+  80% { transform: rotate(-5deg); }
+}
+
+/* Challenges Modal */
+.challenges-modal-content {
+  max-width: 420px;
+  width: 95%;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 0;
+}
+.challenges-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.challenges-modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--gold);
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+.modal-close:hover {
+  color: var(--text-bright);
+  background: rgba(255,255,255,0.1);
+}
+
+/* Challenge Tabs */
+.challenges-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.challenges-tab {
+  flex: 1;
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+}
+.challenges-tab.active {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+.challenges-tab:hover {
+  color: var(--text-bright);
+}
+.challenges-tab-content {
+  padding: 12px 16px;
+}
+
+/* Challenge Card */
+.challenge-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+  transition: all 0.2s;
+}
+.challenge-card.incoming {
+  border-left: 3px solid #ff8844;
+}
+.challenge-card.outgoing {
+  border-left: 3px solid #44aaff;
+  opacity: 0.8;
+}
+.challenge-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.challenge-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.challenge-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.challenge-info {
+  flex: 1;
+  min-width: 0;
+}
+.challenge-name {
+  font-weight: 700;
+  color: var(--text-bright);
+  font-size: 14px;
+}
+.challenge-player {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.challenge-bet {
+  text-align: right;
+  flex-shrink: 0;
+}
+.challenge-bet-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.challenge-bet-amount {
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffd700;
+}
+.challenge-time {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 6px;
+  padding-left: 50px;
+}
+.challenge-actions {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.challenge-accept-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.challenge-accept-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.challenge-bet-input {
+  width: 80px;
+  padding: 6px 10px;
+  background: rgba(255,215,0,0.08);
+  border: 1px solid rgba(255,215,0,0.3);
+  border-radius: 8px;
+  color: #ffd700;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+.challenge-bet-input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 8px rgba(255,215,0,0.2);
+}
+.challenge-bet-hint {
+  font-size: 16px;
+}
+.challenge-btn-row {
+  display: flex;
+  gap: 8px;
+}
+.challenge-accept-btn {
+  flex: 1;
+}
+.challenge-decline-btn {
+  flex: 0.6;
+}
+
+/* Challenge Create Screen */
+.challenge-create-info {
+  text-align: center;
+  padding: 12px 20px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.challenge-bet-setup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(255,215,0,0.06);
+  border: 1px solid rgba(255,215,0,0.15);
+  border-radius: 12px;
+  margin: 0 16px 16px;
+}
+.challenge-bet-setup-label {
+  font-size: 13px;
+  color: var(--gold);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.challenge-bet-input-big {
+  flex: 1;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,215,0,0.3);
+  border-radius: 10px;
+  color: #ffd700;
+  font-size: 18px;
+  font-weight: 800;
+  text-align: center;
+}
+.challenge-bet-input-big:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 10px rgba(255,215,0,0.3);
+}
+.challenge-opponent {
+  position: relative;
+}
+.challenge-send-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+/* Challenge Action Card */
+.action-challenge {
+  background: linear-gradient(135deg, rgba(255,136,68,0.15), rgba(255,68,68,0.15));
+  border-color: rgba(255,136,68,0.3);
+}
+
+/* Challenge Result */
+.challenge-result-bets {
+  margin: 16px 0;
+  text-align: center;
+}
+.challenge-result-pot {
+  font-size: 16px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.challenge-result-gold {
+  font-size: 22px;
+  font-weight: 800;
+}
+.challenge-result-gold.win {
+  color: #44ff66;
+}
+.challenge-result-gold.lose {
+  color: #ff4444;
+}
+
+/* Header gold display */
+.header-gold {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffd700;
+  padding: 4px 10px;
+  background: rgba(255,215,0,0.1);
+  border-radius: 8px;
+}
+
+/* ============ QTE (Quick Time Event) SYSTEM ============ */
+.qte-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.qte-overlay.qte-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* "ATTACK!" prompt */
+.qte-prompt {
+  font-size: 28px;
+  font-weight: 900;
+  color: #ffd700;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 100, 0, 0.4);
+  letter-spacing: 4px;
+  margin-bottom: 20px;
+  animation: qtePromptPulse 0.4s ease infinite alternate;
+}
+
+@keyframes qtePromptPulse {
+  0% { transform: scale(1); text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 100, 0, 0.4); }
+  100% { transform: scale(1.08); text-shadow: 0 0 30px rgba(255, 215, 0, 1), 0 0 60px rgba(255, 100, 0, 0.6); }
+}
+
+/* Bar container */
+.qte-bar-container {
+  width: 85%;
+  max-width: 380px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+.qte-bar {
+  position: relative;
+  width: 100%;
+  height: 40px;
+  background: linear-gradient(180deg, #1a1a2e 0%, #16162a 100%);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Critical zone in center */
+.qte-zone-critical {
+  position: absolute;
+  left: 42.5%;
+  width: 15%;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(255, 50, 0, 0.5) 0%, rgba(255, 150, 0, 0.4) 50%, rgba(255, 50, 0, 0.5) 100%);
+  border-left: 2px solid #ffd700;
+  border-right: 2px solid #ffd700;
+  box-shadow: 
+    inset 0 0 15px rgba(255, 215, 0, 0.3),
+    0 0 20px rgba(255, 215, 0, 0.2);
+  animation: qteCritZonePulse 0.6s ease infinite alternate;
+}
+
+@keyframes qteCritZonePulse {
+  0% { box-shadow: inset 0 0 15px rgba(255, 215, 0, 0.3), 0 0 20px rgba(255, 215, 0, 0.2); }
+  100% { box-shadow: inset 0 0 25px rgba(255, 215, 0, 0.5), 0 0 35px rgba(255, 215, 0, 0.35); }
+}
+
+/* Moving marker */
+.qte-marker {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, #fff 0%, #ffe066 50%, #fff 100%);
+  border-radius: 2px;
+  box-shadow: 
+    0 0 8px rgba(255, 255, 255, 0.9),
+    0 0 20px rgba(255, 215, 0, 0.6);
+  will-change: transform;
+}
+
+/* Hint text */
+.qte-hint {
+  margin-top: 16px;
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  animation: qteHintBlink 0.7s ease infinite alternate;
+}
+
+@keyframes qteHintBlink {
+  0% { opacity: 0.4; }
+  100% { opacity: 0.9; }
+}
+
+/* ============ QTE RESULTS ============ */
+
+/* Critical hit feedback */
+.qte-result-critical {
+  text-align: center;
+  animation: qteCriticalAppear 0.3s ease;
+}
+
+.qte-critical-text {
+  font-size: 36px;
+  font-weight: 900;
+  color: #ff4400;
+  text-shadow: 
+    0 0 20px rgba(255, 68, 0, 0.8),
+    0 0 40px rgba(255, 50, 0, 0.5),
+    0 0 80px rgba(255, 50, 0, 0.3);
+  letter-spacing: 3px;
+  animation: qteCritTextPulse 0.15s ease infinite alternate;
+}
+
+.qte-critical-x2 {
+  font-size: 24px;
+  font-weight: 900;
+  color: #ffd700;
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
+  margin-top: 8px;
+  letter-spacing: 6px;
+  animation: qteX2Scale 0.5s ease;
+}
+
+@keyframes qteCriticalAppear {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.3); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes qteCritTextPulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.06); }
+}
+
+@keyframes qteX2Scale {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.4); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Miss feedback */
+.qte-result-miss {
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35);
+  font-style: italic;
+  letter-spacing: 2px;
+  animation: qteMissAppear 0.3s ease;
+}
+
+@keyframes qteMissAppear {
+  0% { transform: translateY(-10px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* Screen shake for QTE critical */
+.qte-shake {
+  animation: qteShake 0.4s ease !important;
+}
+
+@keyframes qteShake {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-8px, 4px); }
+  20% { transform: translate(8px, -4px); }
+  30% { transform: translate(-6px, 3px); }
+  40% { transform: translate(6px, -3px); }
+  50% { transform: translate(-4px, 2px); }
+  60% { transform: translate(4px, -2px); }
+  70% { transform: translate(-2px, 1px); }
+  80% { transform: translate(2px, -1px); }
+}
+
+/* Flash on critical */
+.qte-flash::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 100, 0, 0.3);
+  z-index: 501;
+  pointer-events: none;
+  animation: qteFlash 0.4s ease forwards;
+}
+
+@keyframes qteFlash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Arena glow when QTE critical hits */
+.qte-arena-critical {
+  box-shadow: inset 0 0 60px rgba(255, 68, 0, 0.3) !important;
+}
+
+/* ============ QTE RESPONSIVE ============ */
+@media (max-width: 400px) {
+  .qte-prompt { font-size: 22px; }
+  .qte-bar { height: 48px; }
+  .qte-bar-container { width: 92%; }
+  .qte-critical-text { font-size: 28px; }
+  .qte-critical-x2 { font-size: 20px; }
+  .qte-hint { font-size: 13px; }
+}
+
+@media (min-width: 401px) and (max-width: 600px) {
+  .qte-bar { height: 44px; }
+}
