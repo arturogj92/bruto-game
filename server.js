@@ -395,6 +395,18 @@ app.post('/api/character/:id/equip', (req, res) => {
     return res.status(400).json({ error: 'No tienes ese item' });
   }
 
+  // Prevent equipping the same weapon in 3+ slots
+  if (itemId && slot.startsWith('weapon')) {
+    const weaponSlots = [char.weapon, char.weapon2, char.weapon3, char.weapon4];
+    // Don't count the current slot (we're replacing it)
+    const slotIndex = ['weapon', 'weapon2', 'weapon3', 'weapon4'].indexOf(slot);
+    weaponSlots[slotIndex] = null;
+    const sameCount = weaponSlots.filter(w => w === itemId).length;
+    if (sameCount >= 2) {
+      return res.status(400).json({ error: 'No puedes equipar la misma arma más de 2 veces' });
+    }
+  }
+
   db.updateCharacter(char.id, { [slot]: itemId });
   const updated = db.getCharacterById(char.id);
 

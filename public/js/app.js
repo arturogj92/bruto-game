@@ -294,6 +294,33 @@ const App = {
   },
 
   // ============ EQUIP ============
+  async previewAndEquip(slot, itemId) {
+    // Show stat diff preview before equipping
+    if (this._defs && slot.startsWith('weapon') && this._defs.weapons) {
+      const oldWeapon = this.currentCharacter[slot];
+      const oldDef = oldWeapon ? this._defs.weapons[oldWeapon] : null;
+      const newDef = itemId ? this._defs.weapons[itemId] : null;
+      
+      const dmgDiff = (newDef ? newDef.damage : 0) - (oldDef ? oldDef.damage : 0);
+      const spdDiff = (newDef ? newDef.speed : 0) - (oldDef ? oldDef.speed : 0);
+      
+      // Flash stat changes
+      const strEl = document.getElementById('stat-val-str');
+      const spdEl = document.getElementById('stat-val-spd');
+      if (strEl && dmgDiff !== 0) {
+        const color = dmgDiff > 0 ? '#4caf50' : '#f44336';
+        const sign = dmgDiff > 0 ? '+' : '';
+        strEl.innerHTML += ' <span style="color:' + color + ';font-weight:bold">(' + sign + dmgDiff + ')</span>';
+      }
+      if (spdEl && spdDiff !== 0) {
+        const color = spdDiff > 0 ? '#4caf50' : '#f44336';
+        const sign = spdDiff > 0 ? '+' : '';
+        spdEl.innerHTML += ' <span style="color:' + color + ';font-weight:bold">(' + sign + spdDiff + ')</span>';
+      }
+    }
+    return this.equipItem(slot, itemId);
+  },
+
   async equipItem(slot, itemId) {
     if (!this.currentCharacter) return;
     try {

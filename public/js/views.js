@@ -221,10 +221,10 @@ const Views = {
   },
 
   statBar(emoji, name, value, max, cls) {
-    return '<div class="stat-row">' +
+    return '<div class="stat-row" id="stat-' + cls + '">' +
       '<div class="stat-name"><span class="emoji">' + emoji + '</span> ' + name + '</div>' +
       '<div class="stat-bar-container"><div class="stat-bar-fill ' + cls + '" style="width:' + Math.min(100, value/max*100) + '%"></div></div>' +
-      '<div class="stat-value">' + value + '</div>' +
+      '<div class="stat-value" id="stat-val-' + cls + '">' + value + '</div>' +
     '</div>';
   },
 
@@ -235,7 +235,7 @@ const Views = {
     
     var selectHtml = '';
     if (items.length > 0) {
-      selectHtml = '<select class="slot-select" onchange="App.equipItem(\'' + slotType + '\', this.value)">' +
+      selectHtml = '<select class="slot-select" onchange="App.previewAndEquip(\'' + slotType + '\', this.value)">' +
         '<option value="">-- Vacío --</option>' +
         items.map(function(i) {
           var def = defsMap ? defsMap[i.id] : null;
