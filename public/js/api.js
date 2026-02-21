@@ -82,3 +82,4 @@ API.declineChallenge = function(challengeId) {
 // Combat History & Active Combat
 API.getCombatHistory = function(charId) { return API.get('/api/history/' + charId); };
 API.getActiveCombat = function(charId) { return API.get('/api/combat/active/' + charId); };
+API.clearActiveCombat = function(charId) { return fetch('/api/combat/active/' + charId, { method: 'DELETE' }).then(r => r.json()); };

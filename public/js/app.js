@@ -685,10 +685,13 @@ App._checkActiveCombat = async function() {
   return false;
 };
 
-// Override matchmaking to check active combat first
+// Override matchmaking - clear any stale active combat first, then proceed
 App._originalMatchmaking = App.matchmaking;
 App.matchmaking = async function() {
-  if (await this._checkActiveCombat()) return;
+  // Clear active combat so PvE results don't block PvP matchmaking
+  if (this.currentCharacter) {
+    try { await API.clearActiveCombat(this.currentCharacter.id); } catch(e) {}
+  }
   return this._originalMatchmaking.call(this);
 };
 

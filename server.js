@@ -1133,6 +1133,12 @@ app.get('/api/combat/active/:charId', (req, res) => {
   }
 });
 
+app.delete('/api/combat/active/:charId', (req, res) => {
+  const charId = parseInt(req.params.charId);
+  delete activeCombats[charId];
+  res.json({ ok: true });
+});
+
 
 
 app.get('*', (req, res) => {
