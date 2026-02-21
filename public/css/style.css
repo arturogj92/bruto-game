@@ -807,47 +807,106 @@ body {
 }
 
 /* ============ COMBO BOOK ============ */
-.combo-book-header { text-align: center; margin-bottom: 20px; }
-.combo-book-header h2 { font-size: 1.5rem; margin-bottom: 4px; }
-.combo-counter { color: var(--text-muted); font-size: 0.85rem; }
+/* ====== COMBO TREE UI (Burricalvo) ====== */
+.combo-progress {
+  text-align: center; padding: 16px; margin-bottom: 12px;
+  background: rgba(255,215,0,0.05); border-radius: 12px;
+  border: 1px solid rgba(255,215,0,0.15);
+}
+.combo-progress-title { font-size: 1rem; font-weight: 700; color: #ffd700; margin-bottom: 8px; }
+.combo-progress-bar-wrap {
+  height: 10px; background: rgba(255,255,255,0.08); border-radius: 5px;
+  overflow: hidden; margin: 8px 0;
+}
+.combo-progress-bar {
+  height: 100%; border-radius: 5px; transition: width 0.5s ease;
+  background: linear-gradient(90deg, #ffd700, #ff8c00);
+  box-shadow: 0 0 10px rgba(255,215,0,0.4);
+}
+.combo-progress-text { font-size: 0.8rem; color: var(--text-muted); }
 
-.combo-grid { display: flex; flex-direction: column; gap: 10px; }
+.combo-tree { display: flex; flex-direction: column; gap: 10px; position: relative; }
+.combo-tree::before {
+  content: ''; position: absolute; left: 24px; top: 0; bottom: 0;
+  width: 2px; background: rgba(255,255,255,0.06);
+}
 
-.combo-card {
+.combo-node {
+  display: flex; align-items: center; gap: 12px;
   background: var(--bg-card, #1a1a2e);
-  border: 2px solid #333;
-  border-radius: 12px;
-  padding: 14px;
-  transition: all 0.3s ease;
+  border: 2px solid #2a2a3e;
+  border-radius: 14px; padding: 12px 14px;
+  transition: all 0.3s ease; position: relative;
 }
-.combo-card.discovered {
-  border-color: #ffd700;
-  box-shadow: 0 0 15px rgba(255, 215, 0, 0.15);
+.combo-node.discovered {
+  border-color: rgba(255,215,0,0.5);
+  background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,140,0,0.04));
+  box-shadow: 0 0 20px rgba(255,215,0,0.1);
 }
-.combo-card.locked { opacity: 0.6; }
-
-.combo-name { font-weight: 700; font-size: 1rem; margin-bottom: 4px; }
-.combo-discovered .combo-name { color: #ffd700; }
-.combo-locked .combo-name { color: #666; }
-
-.combo-weapons { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
-.combo-weapon-tag {
-  padding: 2px 8px;
-  border-radius: 8px;
-  background: rgba(255,255,255,0.08);
-  font-size: 0.75rem;
-  color: #aaa;
+.combo-node.ready {
+  border-color: rgba(0,210,255,0.5);
+  background: linear-gradient(135deg, rgba(0,210,255,0.08), rgba(0,100,255,0.04));
+  box-shadow: 0 0 15px rgba(0,210,255,0.1);
+  animation: readyPulse 2s ease-in-out infinite;
 }
-.combo-weapon-tag.owned { background: rgba(0,210,255,0.15); color: #00d2ff; }
+.combo-node.locked { opacity: 0.55; }
 
-.combo-effect {
-  font-size: 0.8rem;
-  color: #aaa;
-  margin-top: 4px;
+.combo-node-icon {
+  font-size: 1.8rem; min-width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.05); border-radius: 12px;
+  flex-shrink: 0;
+}
+.combo-node.discovered .combo-node-icon {
+  background: rgba(255,215,0,0.12);
+}
+.combo-node.ready .combo-node-icon {
+  background: rgba(0,210,255,0.12);
+}
+
+.combo-node-info { flex: 1; min-width: 0; }
+.combo-node-name {
+  font-weight: 700; font-size: 0.95rem; color: #eee;
+  margin-bottom: 3px;
+}
+.combo-node.discovered .combo-node-name { color: #ffd700; }
+.combo-node.ready .combo-node-name { color: #00d2ff; }
+.combo-node.locked .combo-node-name { color: #555; }
+
+.combo-node-weapons { display: flex; gap: 5px; flex-wrap: wrap; margin: 4px 0; }
+.combo-wp {
+  padding: 2px 8px; border-radius: 6px; font-size: 0.7rem;
+  background: rgba(255,255,255,0.06); color: #777;
+}
+.combo-wp.owned { background: rgba(0,210,255,0.15); color: #00d2ff; }
+.combo-wp.missing { background: rgba(255,60,60,0.1); color: #ff4444; }
+
+.combo-node-bonus {
+  font-size: 0.78rem; color: #ffd700; margin-top: 3px;
   font-style: italic;
 }
+.combo-node-hint {
+  font-size: 0.72rem; color: #555; margin-top: 3px;
+}
+.combo-node-hint.ready-hint { color: #00d2ff; font-weight: 600; }
 
-.combo-locked-hint { color: #555; font-size: 0.75rem; margin-top: 4px; }
+.combo-node-check {
+  font-size: 1.2rem; flex-shrink: 0;
+}
+.combo-node-check.pulse { animation: readyPulse 1.5s ease-in-out infinite; }
+
+@keyframes readyPulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+/* Mobile combo optimizations */
+@media (max-width: 480px) {
+  .combo-node { padding: 10px 12px; gap: 10px; }
+  .combo-node-icon { font-size: 1.5rem; min-width: 38px; height: 38px; }
+  .combo-node-name { font-size: 0.88rem; }
+  .combo-tree::before { left: 20px; }
+}
 
 /* Multi weapon slots */
 .weapon-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 0; }

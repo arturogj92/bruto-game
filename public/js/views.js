@@ -589,35 +589,60 @@ const Views = {
     const discoveredIds = new Set((discoveries || []).map(d => d.combo_id));
     const inventory = JSON.parse(character.inventory || '[]');
     const ownedWeapons = new Set(inventory.filter(i => i.type === 'weapon').map(i => i.id));
+    const discoveredCount = discoveredIds.size;
+    const totalCount = combos.length;
+    const pct = Math.round((discoveredCount / totalCount) * 100);
     
-    return '<div class="screen active">' +
+    return '<div class="screen active screen-character">' +
       '<div class="header">' +
         '<button class="header-back" onclick="App.goBack()">←</button>' +
         '<div class="header-title">📖 Libro de Combos</div>' +
         '<div></div>' +
       '</div>' +
-      '<div class="combo-book-header">' +
-        '<h2>📖 Combos de Armas</h2>' +
-        '<div class="combo-counter">' + discoveredIds.size + '/' + combos.length + ' descubiertos</div>' +
+      // Progress section
+      '<div class="combo-progress">' +
+        '<div class="combo-progress-title">🏆 Progreso de Descubrimiento</div>' +
+        '<div class="combo-progress-bar-wrap">' +
+          '<div class="combo-progress-bar" style="width:' + pct + '%"></div>' +
+        '</div>' +
+        '<div class="combo-progress-text">' + discoveredCount + ' / ' + totalCount + ' combos descubiertos (' + pct + '%)</div>' +
       '</div>' +
-      '<div class="combo-grid">' +
+      // Combo tree
+      '<div class="combo-tree">' +
       combos.map(function(c) {
         var discovered = discoveredIds.has(c.id);
-        return '<div class="combo-card ' + (discovered ? 'discovered' : 'locked') + '">' +
-          '<div class="combo-name">' + (discovered ? c.emoji + ' ' + c.name : '🔒 ???') + '</div>' +
-          '<div class="combo-weapons">' +
-            c.weapons.map(function(w) {
-              return '<span class="combo-weapon-tag ' + (ownedWeapons.has(w) ? 'owned' : '') + '">' + 
-                (discovered ? w : '???') + '</span>';
-            }).join('') +
+        var weaponNames = c.weapons || [];
+        var hasAll = weaponNames.every(function(w) { return w === '__any_4_distinct__' || ownedWeapons.has(w); });
+        var statusClass = discovered ? 'discovered' : (hasAll ? 'ready' : 'locked');
+        
+        return '<div class="combo-node ' + statusClass + '">' +
+          '<div class="combo-node-icon">' + (discovered ? c.emoji : (hasAll ? '❓' : '🔒')) + '</div>' +
+          '<div class="combo-node-info">' +
+            '<div class="combo-node-name">' + (discovered ? c.name : (hasAll ? '¿Combo oculto?' : '???')) + '</div>' +
+            '<div class="combo-node-weapons">' +
+              weaponNames.map(function(w) {
+                if (w === '__any_4_distinct__') return '<span class="combo-wp owned">4 armas distintas</span>';
+                var owned = ownedWeapons.has(w);
+                return '<span class="combo-wp ' + (owned ? 'owned' : 'missing') + '">' + 
+                  (discovered || owned ? w : '???') + 
+                  (owned ? ' ✓' : ' ✗') + '</span>';
+              }).join('') +
+            '</div>' +
+            (discovered ? 
+              '<div class="combo-node-bonus">' + c.desc + '</div>' :
+              hasAll ?
+                '<div class="combo-node-hint ready-hint">¡Tienes las armas! Equípalas para descubrir</div>' :
+                '<div class="combo-node-hint">Consigue las armas necesarias</div>'
+            ) +
           '</div>' +
-          (discovered ? '<div class="combo-effect">' + c.desc + '</div>' : 
-           '<div class="combo-locked-hint">Necesitas ' + c.weaponCount + ' armas específicas</div>') +
+          (discovered ? '<div class="combo-node-check">✅</div>' : 
+           hasAll ? '<div class="combo-node-check pulse">⚡</div>' : '') +
         '</div>';
       }).join('') +
       '</div>' +
     '</div>';
   }
+
 
 ,
 
