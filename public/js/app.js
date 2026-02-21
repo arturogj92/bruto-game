@@ -672,9 +672,4 @@ App.fightPVP = async function(opponentId) {
   return this._originalFightPVP.call(this, opponentId);
 };
 
-// Override fightPVE to check active combat first
-App._originalFightPVE = App.fightPVE;
-App.fightPVE = async function(difficulty) {
-  if (await this._checkActiveCombat()) return;
-  return this._originalFightPVE.call(this, difficulty);
-};
+// PvE does not check active combat (was replaying old PvP fights)App._originalFightPVE = App.fightPVE;App.fightPVE = async function(difficulty) {  return this._originalFightPVE.call(this, difficulty);};
