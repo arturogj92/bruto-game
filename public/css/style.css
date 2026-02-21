@@ -1525,8 +1525,8 @@ body {
 /* Critical zone in center */
 .qte-zone-critical {
   position: absolute;
-  left: 42.5%;
-  width: 15%;
+  /* left set by JS */
+  /* width set by JS */
   height: 100%;
   background: linear-gradient(180deg, rgba(255, 50, 0, 0.5) 0%, rgba(255, 150, 0, 0.4) 50%, rgba(255, 50, 0, 0.5) 100%);
   border-left: 2px solid #ffd700;

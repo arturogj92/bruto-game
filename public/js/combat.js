@@ -8,10 +8,11 @@ class QTESystem {
     this.animId = null;
     this.resolved = false;
     this.startTime = 0;
-    this.duration = 1200; // 1.2 seconds
-    this.criticalZoneStart = 0.455; // 9% zone centered
-    this.criticalZoneEnd = 0.545;
-    this.speed = 3.1; // full traversals per duration
+    this.duration = 1400;
+    this.criticalZoneWidth = 0.12;
+    this.criticalZoneStart = 0.44;
+    this.criticalZoneEnd = 0.56;
+    this.speed = 2.6;
     this.audioCtx = null;
   }
 
@@ -38,6 +39,12 @@ class QTESystem {
       self.markerPos = 0;
       self.startTime = performance.now();
 
+      // Randomize critical zone position each QTE
+      var zoneWidth = self.criticalZoneWidth;
+      var center = 0.20 + Math.random() * 0.60; // center between 0.20 and 0.80
+      self.criticalZoneStart = center - zoneWidth / 2;
+      self.criticalZoneEnd = center + zoneWidth / 2;
+
       // Create overlay
       self.overlay = document.createElement("div");
       self.overlay.className = "qte-overlay";
@@ -52,6 +59,11 @@ class QTESystem {
         '<div class="qte-hint">SPACE / TAP</div>';
 
       document.body.appendChild(self.overlay);
+
+      // Position the critical zone visually to match logic
+      var critZone = self.overlay.querySelector(".qte-zone-critical");
+      critZone.style.left = (self.criticalZoneStart * 100) + "%";
+      critZone.style.width = (zoneWidth * 100) + "%";
 
       // Force reflow then show
       self.overlay.offsetHeight;
