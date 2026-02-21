@@ -320,10 +320,9 @@ body {
   padding: 12px; position: relative; overflow-x: hidden; overflow-y: auto;
 }
 .arena-bg {
+  position: absolute; inset: 0; opacity: 0.25;
   background-image: url("/img/backgrounds/arena_combat.png");
   background-size: cover; background-position: center;
-  position: absolute; inset: 0; opacity: 0.15;
-  background: repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(255,255,255,0.02) 20px, rgba(255,255,255,0.02) 40px);
   pointer-events: none;
 }
 .arena-header { text-align: center; padding: 12px 0; position: relative; z-index: 1; }
@@ -2311,23 +2310,55 @@ body {
 .screen-select {
   background-image: url('/img/backgrounds/world_map.png');
   background-size: cover; background-position: center;
-  position: relative;
+  position: relative; min-height: 100vh;
 }
 .screen-select::before {
   content: ''; position: absolute; inset: 0;
-  background: rgba(10,10,20,0.82);
-  pointer-events: none;
+  background: linear-gradient(180deg, rgba(10,10,20,0.7) 0%, rgba(10,10,20,0.85) 100%);
+  pointer-events: none; z-index: 0;
 }
 .screen-select > * { position: relative; z-index: 1; }
 
 .screen-character {
   background-image: url('/img/backgrounds/character_profile.png');
   background-size: cover; background-position: center;
-  position: relative;
+  position: relative; min-height: 100vh;
 }
 .screen-character::before {
   content: ''; position: absolute; inset: 0;
-  background: rgba(10,10,20,0.78);
-  pointer-events: none;
+  background: linear-gradient(180deg, rgba(10,10,20,0.65) 0%, rgba(10,10,20,0.8) 100%);
+  pointer-events: none; z-index: 0;
 }
 .screen-character > * { position: relative; z-index: 1; }
+
+/* Mobile background optimizations */
+@media (max-width: 480px) {
+  .screen-select {
+    background-size: cover;
+    background-position: 40% center;
+  }
+  .screen-select::before {
+    background: linear-gradient(180deg, rgba(10,10,20,0.6) 0%, rgba(10,10,20,0.8) 50%, rgba(10,10,20,0.9) 100%);
+  }
+  .screen-character {
+    background-position: center top;
+  }
+  .screen-character::before {
+    background: linear-gradient(180deg, rgba(10,10,20,0.55) 0%, rgba(10,10,20,0.75) 50%, rgba(10,10,20,0.85) 100%);
+  }
+  .arena-bg {
+    opacity: 0.3;
+    background-position: center bottom;
+  }
+  .arena {
+    background-image: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .screen-select::before,
+  .screen-character::before {
+    background: linear-gradient(180deg, rgba(10,10,20,0.55) 0%, rgba(10,10,20,0.75) 40%, rgba(10,10,20,0.9) 100%);
+  }
+  .arena-bg { opacity: 0.35; }
+}
