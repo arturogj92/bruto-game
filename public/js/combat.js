@@ -598,6 +598,7 @@ class CombatAnimator {
     var self = this;
     this.qteIndices = this._pickQTETurns(log);
     this.qteFired = 0;
+    this.interactiveBusy = false; // Lock to prevent simultaneous interactive events
 
     // Track turn count for mashing trigger
     var turnCount = 0;
@@ -618,8 +619,13 @@ class CombatAnimator {
 
         // === MASHING RÁPIDO CHECK ===
         if (self.mashingEnabled && !self.mashingFired && turnCount === self.mashingTriggerTurn && entry.type === "attack") {
+          // Wait for any active interactive event to finish
+          while (self.interactiveBusy) { await self.wait(100); }
           self.mashingFired = true;
+          self.interactiveBusy = true;
           var mashResult = await self.mashing.show();
+          self.interactiveBusy = false;
+          await self.wait(400); // Brief pause between interactive events
           self.mashingBonus = mashResult.multiplier;
           if (mashResult.bonusPercent > 0) {
             self.addLog("⚡ ¡Mashing Rápido! +" + mashResult.bonusPercent + "% daño en el próximo golpe!", "ability");
@@ -645,9 +651,14 @@ class CombatAnimator {
             var f2Ratio = f2max > 0 ? f2hp / f2max : 1;
 
             if (f1Ratio < 0.6 || f2Ratio < 0.6) {
+              // Wait for any active interactive event to finish
+              while (self.interactiveBusy) { await self.wait(100); }
               self.tacticalFired = true;
               tacticalCheckDone = true;
+              self.interactiveBusy = true;
               var tacResult = await self.tactical.show(self.f1.name);
+              self.interactiveBusy = false;
+              await self.wait(400); // Brief pause between interactive events
               self.tacticalChoice = tacResult.choice;
 
               if (tacResult.choice === "heal") {
@@ -799,8 +810,13 @@ class CombatAnimator {
     var qteCritical = false;
 
     if (isQTETurn) {
+      // Wait for any active interactive event to finish
+      while (this.interactiveBusy) { await this.wait(100); }
       // Show QTE before the attack animation
+      this.interactiveBusy = true;
       qteCritical = await this.qte.show();
+      this.interactiveBusy = false;
+      await this.wait(400); // Brief pause between interactive events
       this.qteFired++;
     }
 
